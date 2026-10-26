@@ -7,9 +7,6 @@ require('dotenv').config();
 
 const router = express.Router();
 
-// ──────────────────────────────────────────────────────────────
-// CLOUDINARY CONFIG
-// ──────────────────────────────────────────────────────────────
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -17,18 +14,14 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ──────────────────────────────────────────────────────────────
 // MULTER (hold file in memory before Cloudinary upload)
-// ──────────────────────────────────────────────────────────────
 
 const upload = multer({
     storage: multer.memoryStorage(),
     limits:  { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
-// ──────────────────────────────────────────────────────────────
 // CLOUDINARY UPLOAD HELPER
-// ──────────────────────────────────────────────────────────────
 
 const uploadToCloudinary = (fileBuffer) => {
     return new Promise((resolve, reject) => {
@@ -43,10 +36,8 @@ const uploadToCloudinary = (fileBuffer) => {
     });
 };
 
-// ──────────────────────────────────────────────────────────────
 // AUTH MIDDLEWARE  — verifies Firebase ID token from Bearer header
-// Apply this to any admin-only route.
-// ──────────────────────────────────────────────────────────────
+
 
 async function verifyFirebaseToken(req, res, next) {
     const authHeader = req.headers.authorization;
@@ -67,9 +58,6 @@ async function verifyFirebaseToken(req, res, next) {
     }
 }
 
-// ──────────────────────────────────────────────────────────────
-// PUBLIC ROUTES
-// ──────────────────────────────────────────────────────────────
 
 // GET: Fetch published resources
 router.get('/resources', async (req, res) => {

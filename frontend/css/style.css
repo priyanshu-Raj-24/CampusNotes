@@ -1,10 +1,4 @@
-/* ============================================================
-   CampusNotes – Global Styles
-   (Tailwind CSS handles the bulk of styling.
-    This file handles custom extensions and overrides.)
-   ============================================================ */
 
-/* --- Base font --- */
 body {
     font-family: 'Manrope', sans-serif;
 }
@@ -15,9 +9,6 @@ body {
     outline-offset: 2px;
 }
 
-/* ----------------------------------------
-   Resource Cards
-   ---------------------------------------- */
 .resource-card {
     display: flex;
     flex-direction: column;
@@ -34,9 +25,6 @@ body {
     transform: translateY(-2px);
 }
 
-/* ----------------------------------------
-   Upload drag-and-drop zone
-   ---------------------------------------- */
 .drop-zone {
     border: 2px dashed #c3d6cb;
     border-radius: 0.75rem;
@@ -52,9 +40,6 @@ body {
     background: #EAF0EB;
 }
 
-/* ----------------------------------------
-   Toast Notifications
-   ---------------------------------------- */
 #toast-container {
     position: fixed;
     bottom: 1.5rem;
@@ -105,9 +90,6 @@ body {
     to   { opacity: 0; pointer-events: none; }
 }
 
-/* ----------------------------------------
-   Skeleton Loading Shimmer
-   ---------------------------------------- */
 .skeleton {
     background: linear-gradient(90deg, #e8e8e6 25%, #f0f0ee 50%, #e8e8e6 75%);
     background-size: 200% 100%;
@@ -120,9 +102,6 @@ body {
     100% { background-position: -200% 0; }
 }
 
-/* ----------------------------------------
-   Mobile hamburger menu
-   ---------------------------------------- */
 #mobile-menu {
     transition: max-height 0.3s ease, opacity 0.3s ease;
     max-height: 0;
@@ -151,17 +130,11 @@ body {
     }
 }
 
-/* ----------------------------------------
-   Admin table — horizontal scroll on small screens
-   ---------------------------------------- */
 .admin-table-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
 
-/* ----------------------------------------
-   File input — hide default & style label
-   ---------------------------------------- */
 input[type="file"].sr-file {
     position: absolute;
     width: 1px;
@@ -174,9 +147,6 @@ input[type="file"].sr-file {
     border: 0;
 }
 
-/* ----------------------------------------
-   Scrollbar (webkit)
-   ---------------------------------------- */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;

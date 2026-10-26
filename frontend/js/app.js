@@ -1,15 +1,6 @@
-/* ============================================================
-   CampusNotes – Frontend Application
-   Firebase Auth (compat SDK) + Full App Logic
-   ============================================================ */
 
 const API_BASE = 'http://localhost:5000/api';
 
-// ──────────────────────────────────────────────────────────────
-// FIREBASE CONFIG & INITIALISATION
-// (Uses the compat SDK loaded via <script> tags in index.html.
-//  Do NOT mix with ES module `import` statements here.)
-// ──────────────────────────────────────────────────────────────
 
 const firebaseConfig = {
     apiKey:            "AIzaSyBzA2Vpn-oKMkv5SxyY6bCQ-hMrVd1Exa4",
@@ -31,10 +22,6 @@ const provider = new firebase.auth.GoogleAuthProvider();
 
 let idToken = null; // Stores the signed-in user's JWT for secured API calls
 
-// ──────────────────────────────────────────────────────────────
-// AUTH STATE LISTENER
-// Runs immediately and whenever the user signs in / out.
-// ──────────────────────────────────────────────────────────────
 
 function getAvatarUrl(user) {
     if (user && user.photoURL) return user.photoURL;
@@ -145,9 +132,6 @@ async function handleSignOut() {
     }
 }
 
-// ──────────────────────────────────────────────────────────────
-// TOAST NOTIFICATIONS
-// ──────────────────────────────────────────────────────────────
 
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
@@ -164,9 +148,6 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 4100);
 }
 
-// ──────────────────────────────────────────────────────────────
-// MOBILE MENU
-// ──────────────────────────────────────────────────────────────
 
 function toggleMobileMenu() {
     const menu = document.getElementById('mobile-menu');
@@ -183,9 +164,6 @@ function closeMobileMenu() {
     btn.setAttribute('aria-expanded', 'false');
 }
 
-// ──────────────────────────────────────────────────────────────
-// SECTION ROUTER
-// ──────────────────────────────────────────────────────────────
 
 const SECTIONS = ['home', 'upload', 'admin'];
 
@@ -215,9 +193,6 @@ function showSection(sectionId) {
     if (sectionId === 'admin') fetchAdminResources();
 }
 
-// ──────────────────────────────────────────────────────────────
-// RESOURCE CARD BUILDER  (single source of truth)
-// ──────────────────────────────────────────────────────────────
 
 const FILE_TYPE_ICONS = {
     pdf:  '📄',
@@ -319,9 +294,6 @@ const SKELETON_CARD = `<div class="resource-card">
     <div class="skeleton h-3 w-full rounded"></div>
 </div>`;
 
-// ──────────────────────────────────────────────────────────────
-// FETCH & DISPLAY RESOURCES
-// ──────────────────────────────────────────────────────────────
 
 async function fetchResources(prefYear = null, prefSemester = null) {
     const grid    = document.getElementById('resources-grid');
@@ -358,9 +330,6 @@ async function fetchResources(prefYear = null, prefSemester = null) {
     }
 }
 
-// ──────────────────────────────────────────────────────────────
-// SEARCH
-// ──────────────────────────────────────────────────────────────
 
 async function handleSearch() {
     const q        = document.getElementById('searchInput').value.trim();
@@ -414,9 +383,6 @@ async function handleSearch() {
     }
 }
 
-// ──────────────────────────────────────────────────────────────
-// ADMIN PANEL (Token-secured)
-// ──────────────────────────────────────────────────────────────
 
 async function fetchAdminResources() {
     if (!idToken) {
@@ -524,9 +490,6 @@ async function updateStatus(id, newStatus) {
     }
 }
 
-// ──────────────────────────────────────────────────────────────
-// UPLOAD FORM
-// ──────────────────────────────────────────────────────────────
 
 function handleDragOver(e) {
     e.preventDefault();
@@ -637,9 +600,6 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     }
 });
 
-// ──────────────────────────────────────────────────────────────
-// DYNAMIC SEMESTER SELECTS
-// ──────────────────────────────────────────────────────────────
 
 function getSemesterOptions(year) {
     const start = (year - 1) * 2 + 1;
@@ -658,9 +618,6 @@ function updateModalSemesters() {
     document.getElementById('modal-semester').innerHTML = getSemesterOptions(year);
 }
 
-// ──────────────────────────────────────────────────────────────
-// PREFERENCES & WELCOME MODAL
-// ──────────────────────────────────────────────────────────────
 
 function checkUserPreferences() {
     if (!auth.currentUser) {
@@ -724,9 +681,6 @@ function updatePreferenceBanner(year, sem) {
     document.getElementById('active-preference-banner').classList.remove('hidden');
 }
 
-// ──────────────────────────────────────────────────────────────
-// KEYBOARD SHORTCUTS
-// ──────────────────────────────────────────────────────────────
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && document.activeElement.id === 'searchInput') {
@@ -739,5 +693,3 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
-
-// Auth listener handles first-time login, then year/semester.
