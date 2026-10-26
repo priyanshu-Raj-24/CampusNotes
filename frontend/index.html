@@ -8,8 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
-    
-    <!-- Firebase Compat Libraries for easy Vanilla JS Integration -->
+
+    <!-- Firebase Compat Libraries -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 </head>
@@ -19,45 +19,83 @@
          HEADER
     ============================================================ -->
     <header class="bg-white border-b border-[#E5E7E2] sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
 
             <!-- Brand -->
             <div class="flex items-center gap-2 cursor-pointer flex-shrink-0" onclick="showSection('home')" role="button" aria-label="Go to home">
                 <div class="w-8 h-8 bg-[#285744] rounded text-white flex items-center justify-center font-bold text-xl select-none">C</div>
-                <span class="font-bold text-xl tracking-tight">CampusNotes</span>
+                <span class="font-bold text-lg sm:text-xl tracking-tight">CampusNotes</span>
             </div>
 
             <!-- Desktop Nav -->
             <nav class="hidden md:flex items-center gap-6" aria-label="Main navigation">
                 <a href="#" class="text-[#747A76] hover:text-[#285744] font-medium transition-colors" onclick="showSection('home')">Browse</a>
                 <a href="#" class="text-[#747A76] hover:text-[#285744] font-medium transition-colors" onclick="showSection('home')">Recent</a>
-                <a href="#" id="nav-admin-link" class="hidden text-[#747A76] hover:text-[#285744] font-medium transition-colors" onclick="showSection('admin')">Admin Dashboard</a>
+                <a href="#" id="nav-admin-link" class="hidden text-[#747A76] hover:text-[#285744] font-medium transition-colors" onclick="showSection('admin')">Admin</a>
             </nav>
 
-            <!-- Actions -->
-            <div class="flex items-center gap-4">
-                <button id="auth-btn-desktop" onclick="toggleAuth()" class="hidden md:block text-sm font-semibold text-[#747A76] hover:text-[#285744] transition-colors">
-                    Admin Login
-                </button>
-                <button onclick="showSection('upload')" class="bg-[#285744] hover:bg-[#1e4233] text-white px-4 py-2 rounded-md font-medium transition-colors text-sm whitespace-nowrap">
+            <!-- Right-side Actions -->
+            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+
+                <!-- User Profile — shown after login (desktop) -->
+                <div id="user-profile" class="hidden items-center gap-2">
+                    <img id="user-avatar" src="" alt="Profile"
+                        class="w-8 h-8 rounded-full border-2 border-[#E5E7E2] object-cover flex-shrink-0 bg-[#EAF0EB]">
+                    <span id="user-display-name"
+                        class="text-sm font-semibold text-[#202522] hidden sm:block max-w-[88px] md:max-w-[140px] truncate"></span>
+                    <button onclick="handleSignOut()"
+                        class="hidden md:block text-xs text-[#747A76] hover:text-red-500 transition-colors font-medium whitespace-nowrap">
+                        Sign out
+                    </button>
+                </div>
+
+                <!-- Upload Notes — hidden on very small screens, visible from sm up -->
+                <button onclick="showSection('upload')"
+                    class="hidden sm:block bg-[#285744] hover:bg-[#1e4233] text-white px-3 py-2 sm:px-4 rounded-md font-medium transition-colors text-sm whitespace-nowrap">
                     Upload Notes
                 </button>
-                <!-- Hamburger (mobile) -->
-                <button id="hamburger-btn" class="md:hidden p-2 rounded-md hover:bg-[#F8F8F5] transition-colors" aria-label="Open menu" aria-expanded="false" onclick="toggleMobileMenu()">
+
+                <!-- Hamburger (mobile only) -->
+                <button id="hamburger-btn"
+                    class="md:hidden p-2 rounded-md hover:bg-[#F8F8F5] transition-colors flex-shrink-0"
+                    aria-label="Open menu" aria-expanded="false" onclick="toggleMobileMenu()">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path id="ham-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                     </svg>
                 </button>
             </div>
         </div>
 
-        <!-- Mobile Nav -->
+        <!-- Mobile Nav Drawer -->
         <div id="mobile-menu" class="md:hidden border-t border-[#E5E7E2] bg-white px-4" aria-label="Mobile navigation">
             <div class="py-3 flex flex-col gap-1">
-                <a href="#" class="px-3 py-2 rounded-md text-[#747A76] hover:text-[#285744] hover:bg-[#EAF0EB] font-medium transition-colors" onclick="showSection('home'); closeMobileMenu()">Browse</a>
-                <a href="#" class="px-3 py-2 rounded-md text-[#747A76] hover:text-[#285744] hover:bg-[#EAF0EB] font-medium transition-colors" onclick="showSection('home'); closeMobileMenu()">Recent</a>
-                <a href="#" id="mobile-admin-link" class="hidden px-3 py-2 rounded-md text-[#747A76] hover:text-[#285744] hover:bg-[#EAF0EB] font-medium transition-colors" onclick="showSection('admin'); closeMobileMenu()">Admin Dashboard</a>
-                <button id="auth-btn-mobile" class="text-left px-3 py-2 rounded-md text-[#747A76] hover:text-[#285744] hover:bg-[#EAF0EB] font-medium transition-colors" onclick="toggleAuth(); closeMobileMenu()">Admin Login</button>
+                <a href="#" class="px-3 py-2.5 rounded-md text-[#747A76] hover:text-[#285744] hover:bg-[#EAF0EB] font-medium transition-colors"
+                    onclick="showSection('home'); closeMobileMenu()">Browse</a>
+                <a href="#" class="px-3 py-2.5 rounded-md text-[#747A76] hover:text-[#285744] hover:bg-[#EAF0EB] font-medium transition-colors"
+                    onclick="showSection('home'); closeMobileMenu()">Recent</a>
+                <a href="#" id="mobile-admin-link"
+                    class="hidden px-3 py-2.5 rounded-md text-[#747A76] hover:text-[#285744] hover:bg-[#EAF0EB] font-medium transition-colors"
+                    onclick="showSection('admin'); closeMobileMenu()">Admin</a>
+
+                <!-- Upload Notes in mobile menu -->
+                <button onclick="showSection('upload'); closeMobileMenu();"
+                    class="text-left px-3 py-2.5 mt-1 rounded-md bg-[#285744] text-white hover:bg-[#1e4233] font-semibold transition-colors text-sm">
+                    Upload Notes
+                </button>
+
+                <!-- Logged-in user info row (mobile) -->
+                <div id="mobile-user-info" class="hidden mt-1 pt-2 border-t border-[#E5E7E2]">
+                    <div class="flex items-center gap-3 px-3 py-2">
+                        <img id="mobile-user-avatar" src="" alt=""
+                            class="w-8 h-8 rounded-full border border-[#E5E7E2] object-cover bg-[#EAF0EB] flex-shrink-0">
+                        <span id="mobile-user-name"
+                            class="text-sm font-semibold text-[#202522] truncate flex-1"></span>
+                    </div>
+                    <button onclick="handleSignOut(); closeMobileMenu();"
+                        class="w-full text-left px-3 py-2 rounded-md text-red-500 hover:bg-red-50 font-medium transition-colors text-sm">
+                        Sign out
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -65,40 +103,40 @@
     <!-- ============================================================
          MAIN
     ============================================================ -->
-    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 w-full">
 
-        <!-- ──────────────────────────────────────────
-             HOME SECTION
-        ────────────────────────────────────────── -->
+        <!-- HOME SECTION -->
         <section id="home-section" class="block">
             <div class="text-center max-w-3xl mx-auto mb-10">
-                <h1 class="text-4xl md:text-5xl font-extrabold mb-4 text-[#202522] leading-tight">
+                <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-4 text-[#202522] leading-tight">
                     Your Campus. Your Notes.<br class="hidden sm:block"> One Shared Library.
                 </h1>
-                <p class="text-lg text-[#747A76] leading-relaxed">
+                <p class="text-base sm:text-lg text-[#747A76] leading-relaxed">
                     Discover lecture notes, previous-year papers, lab manuals, and academic resources — organised by semester.
                 </p>
             </div>
 
             <!-- Search & Filter Bar -->
             <div class="bg-white p-4 rounded-xl border border-[#E5E7E2] mb-6 shadow-sm">
-                <div class="flex flex-wrap gap-3 items-center">
-                    <div class="relative flex-grow min-w-[180px]">
+                <div class="flex flex-col sm:flex-row sm:flex-wrap gap-3 items-stretch sm:items-center">
+                    <div class="relative flex-grow min-w-0 sm:min-w-[160px]">
                         <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#747A76]">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
                             </svg>
                         </span>
-                        <input type="text" id="searchInput" placeholder="Search by title or subject…" class="w-full pl-9 pr-4 py-2 border border-[#E5E7E2] rounded-md focus:outline-none focus:border-[#285744] transition-colors" aria-label="Search resources">
+                        <input type="text" id="searchInput" placeholder="Search by title or subject…"
+                            class="w-full pl-9 pr-4 py-2 border border-[#E5E7E2] rounded-md focus:outline-none focus:border-[#285744] transition-colors text-sm"
+                            aria-label="Search resources">
                     </div>
-                    <select id="filterYear" class="border border-[#E5E7E2] rounded-md px-3 py-2 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by year">
+                    <select id="filterYear" class="w-full sm:w-auto border border-[#E5E7E2] rounded-md px-3 py-2 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by year">
                         <option value="">Any Year</option>
                         <option value="1">Year 1</option>
                         <option value="2">Year 2</option>
                         <option value="3">Year 3</option>
                         <option value="4">Year 4</option>
                     </select>
-                    <select id="filterSemester" class="border border-[#E5E7E2] rounded-md px-3 py-2 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by semester">
+                    <select id="filterSemester" class="w-full sm:w-auto border border-[#E5E7E2] rounded-md px-3 py-2 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by semester">
                         <option value="">Any Semester</option>
                         <option value="1">Sem 1</option>
                         <option value="2">Sem 2</option>
@@ -109,28 +147,30 @@
                         <option value="7">Sem 7</option>
                         <option value="8">Sem 8</option>
                     </select>
-                    <select id="filterCategory" class="border border-[#E5E7E2] rounded-md px-3 py-2 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by category">
+                    <select id="filterCategory" class="w-full sm:w-auto border border-[#E5E7E2] rounded-md px-3 py-2 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by category">
                         <option value="">Any Category</option>
                         <option value="Lecture Notes">Lecture Notes</option>
                         <option value="Previous Year Question Papers">Question Papers</option>
                         <option value="Lab Manuals">Lab Manuals</option>
                         <option value="Reference Materials">Reference Materials</option>
                     </select>
-                    <button onclick="handleSearch()" class="bg-[#202522] hover:bg-black text-white px-5 py-2 rounded-md font-medium transition-colors text-sm whitespace-nowrap">
+                    <button onclick="handleSearch()" class="w-full sm:w-auto bg-[#202522] hover:bg-black text-white px-5 py-2 rounded-md font-medium transition-colors text-sm whitespace-nowrap">
                         Search
                     </button>
                 </div>
             </div>
 
             <!-- Active Preference Banner -->
-            <div id="active-preference-banner" class="hidden mb-6 bg-[#EAF0EB] text-[#285744] px-4 py-3 rounded-lg flex justify-between items-center border border-[#c3d6cb]">
-                <span id="preference-text" class="font-medium text-sm"></span>
-                <button onclick="openWelcomeModal()" class="text-xs font-bold hover:underline bg-white px-3 py-1 rounded border border-[#c3d6cb] transition-colors ml-4 flex-shrink-0">Change</button>
+            <div id="active-preference-banner" class="hidden mb-6 bg-[#EAF0EB] text-[#285744] px-4 py-3 rounded-lg border border-[#c3d6cb]">
+                <div class="flex justify-between items-center gap-3">
+                    <span id="preference-text" class="font-medium text-sm"></span>
+                    <button onclick="openWelcomeModal()" class="text-xs font-bold hover:underline bg-white px-3 py-1 rounded border border-[#c3d6cb] transition-colors flex-shrink-0">Change</button>
+                </div>
             </div>
 
             <!-- Section Header -->
             <div class="flex items-center justify-between mb-5">
-                <h2 class="text-2xl font-bold" id="resource-section-title">Recently Published</h2>
+                <h2 class="text-xl sm:text-2xl font-bold" id="resource-section-title">Recently Published</h2>
                 <span id="resource-count" class="text-sm text-[#747A76]"></span>
             </div>
 
@@ -142,9 +182,7 @@
             </div>
         </section>
 
-        <!-- ──────────────────────────────────────────
-             ADMIN SECTION
-        ────────────────────────────────────────── -->
+        <!-- ADMIN SECTION -->
         <section id="admin-section" class="hidden">
             <div class="flex flex-wrap gap-4 justify-between items-center mb-6">
                 <div>
@@ -175,15 +213,13 @@
             </div>
         </section>
 
-        <!-- ──────────────────────────────────────────
-             UPLOAD SECTION
-        ────────────────────────────────────────── -->
+        <!-- UPLOAD SECTION -->
         <section id="upload-section" class="hidden max-w-2xl mx-auto">
             <div class="mb-6">
                 <h2 class="text-2xl font-bold">Upload Academic Resource</h2>
                 <p class="text-sm text-[#747A76] mt-1">Share your notes with your campus community. Uploads are reviewed before going live.</p>
             </div>
-            <div class="bg-white p-8 rounded-xl border border-[#E5E7E2] shadow-sm">
+            <div class="bg-white p-6 sm:p-8 rounded-xl border border-[#E5E7E2] shadow-sm">
                 <form id="upload-form" class="space-y-5" novalidate>
                     <div>
                         <label for="title" class="block text-sm font-semibold mb-1">Resource Title <span class="text-red-500">*</span></label>
@@ -191,7 +227,7 @@
                             class="w-full border border-[#E5E7E2] rounded-md px-4 py-2.5 focus:outline-none focus:border-[#285744] transition-colors placeholder-[#a8aca9]">
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label for="academicYear" class="block text-sm font-semibold mb-1">Academic Year <span class="text-red-500">*</span></label>
                             <select id="academicYear" required class="w-full border border-[#E5E7E2] rounded-md px-4 py-2.5 bg-white focus:outline-none focus:border-[#285744] transition-colors" onchange="updateUploadSemesters()">
@@ -210,7 +246,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label for="subject" class="block text-sm font-semibold mb-1">Subject <span class="text-red-500">*</span></label>
                             <input type="text" id="subject" required placeholder="e.g. Data Structures"
@@ -234,7 +270,7 @@
                             <svg class="w-10 h-10 text-[#285744] mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V4m0 0L8 8m4-4l4 4"/>
                             </svg>
-                            <p class="text-sm font-medium text-[#202522]" id="drop-label">Drag & drop your file here, or <span class="text-[#285744] underline cursor-pointer">browse</span></p>
+                            <p class="text-sm font-medium text-[#202522]" id="drop-label">Drag &amp; drop your file here, or <span class="text-[#285744] underline cursor-pointer">browse</span></p>
                             <p class="text-xs text-[#747A76] mt-1">PDF, DOCX, TXT, PNG, JPG — max 10 MB</p>
                         </div>
                         <input type="file" id="file" required accept=".pdf,.doc,.docx,.txt,.png,.jpg" class="sr-file" onchange="handleFileSelect(this)">
@@ -267,17 +303,63 @@
     </footer>
 
     <!-- ============================================================
-         WELCOME MODAL
+         LOGIN MODAL  (shown on first visit / when not signed in)
     ============================================================ -->
-    <div id="welcome-modal" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-9 h-9 bg-[#EAF0EB] rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-[#285744]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                </div>
-                <h2 id="modal-title" class="text-xl font-bold text-[#202522]">Welcome to CampusNotes</h2>
+    <div id="login-modal" class="fixed inset-0 z-[200] flex items-center justify-center p-4 overflow-y-auto"
+        style="background: rgba(28, 58, 42, 0.97);"
+        role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 sm:p-9 text-center my-auto">
+
+            <!-- Brand mark -->
+            <div class="w-14 h-14 bg-[#285744] rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-md">
+                <span class="text-white font-extrabold text-3xl select-none">C</span>
             </div>
-            <p class="text-[#747A76] text-sm mb-6">Tell us your year and semester — we'll show you the most relevant study materials right away.</p>
+
+            <h2 id="login-modal-title" class="text-2xl font-bold text-[#202522] mb-2">Welcome to CampusNotes</h2>
+            <p class="text-[#747A76] text-sm mb-8 leading-relaxed">
+                Your shared academic library — sign in to access lecture notes, question papers, and more for your semester.
+            </p>
+
+            <!-- Google Sign-In Button -->
+            <button id="google-signin-btn" onclick="signInWithGoogle()"
+                class="w-full flex items-center justify-center gap-3 border-2 border-[#E5E7E2] hover:border-[#285744] hover:bg-[#EAF0EB] disabled:opacity-60 disabled:cursor-not-allowed rounded-xl px-5 py-3.5 font-semibold text-[#202522] transition-all duration-200">
+                <!-- Google G logo -->
+                <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+                <span id="signin-label">Continue with Google</span>
+            </button>
+
+            <p class="text-xs text-[#a8aca9] mt-6">
+                By signing in you agree to our
+                <a href="#" class="underline hover:text-[#285744] transition-colors">Terms of Service</a>.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         WELCOME MODAL  (year & semester — shown right after login)
+    ============================================================ -->
+    <div id="welcome-modal" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm"
+        role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-9 h-9 bg-[#EAF0EB] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-[#285744]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 id="modal-title" class="text-xl font-bold text-[#202522]">Pick Your Semester</h2>
+                    <p id="modal-greeting" class="text-xs text-[#747A76]"></p>
+                </div>
+            </div>
+            <p class="text-[#747A76] text-sm mb-6 mt-3">
+                Tell us your year and semester — we'll show you the most relevant study materials right away.
+            </p>
             <div class="space-y-4">
                 <div>
                     <label for="modal-year" class="block text-sm font-semibold mb-1">Academic Year</label>

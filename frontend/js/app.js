@@ -36,29 +36,85 @@ let idToken = null; // Stores the signed-in user's JWT for secured API calls
 // Runs immediately and whenever the user signs in / out.
 // ──────────────────────────────────────────────────────────────
 
-auth.onAuthStateChanged(async (user) => {
-    const authBtnDesktop = document.getElementById('auth-btn-desktop');
-    const authBtnMobile  = document.getElementById('auth-btn-mobile');
-    const navAdmin       = document.getElementById('nav-admin-link');
-    const mobileAdmin    = document.getElementById('mobile-admin-link');
+function getAvatarUrl(user) {
+    if (user && user.photoURL) return user.photoURL;
+    const name = encodeURIComponent((user && (user.displayName || user.email)) || 'User');
+    return `https://ui-avatars.com/api/?name=${name}&background=285744&color=fff&size=64`;
+}
+
+function updateUserProfileUI(user) {
+    const profile      = document.getElementById('user-profile');
+    const avatar       = document.getElementById('user-avatar');
+    const displayName  = document.getElementById('user-display-name');
+    const mobileInfo   = document.getElementById('mobile-user-info');
+    const mobileAvatar = document.getElementById('mobile-user-avatar');
+    const mobileName   = document.getElementById('mobile-user-name');
+    const greeting     = document.getElementById('modal-greeting');
 
     if (user) {
-        // Refresh token (tokens expire after 1 hour)
-        idToken = await user.getIdToken();
+        const name = user.displayName || user.email || 'Student';
+        const url  = getAvatarUrl(user);
 
-        if (authBtnDesktop) authBtnDesktop.textContent = `Logout (${user.displayName || user.email})`;
-        if (authBtnMobile)  authBtnMobile.textContent  = 'Logout';
-        if (navAdmin)       navAdmin.classList.remove('hidden');
-        if (mobileAdmin)    mobileAdmin.classList.remove('hidden');
+        if (profile) {
+            profile.classList.remove('hidden');
+            profile.classList.add('flex');
+        }
+        if (avatar) {
+            avatar.src = url;
+            avatar.alt = name;
+        }
+        if (displayName) displayName.textContent = name;
+
+        if (mobileInfo)   mobileInfo.classList.remove('hidden');
+        if (mobileAvatar) {
+            mobileAvatar.src = url;
+            mobileAvatar.alt = name;
+        }
+        if (mobileName) mobileName.textContent = name;
+        if (greeting)   greeting.textContent = `Hi, ${name.split(' ')[0]}`;
+    } else {
+        if (profile) {
+            profile.classList.add('hidden');
+            profile.classList.remove('flex');
+        }
+        if (mobileInfo) mobileInfo.classList.add('hidden');
+        if (greeting)   greeting.textContent = '';
+    }
+}
+
+function showLoginModal() {
+    const modal = document.getElementById('login-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function hideLoginModal() {
+    const modal = document.getElementById('login-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function setSignInBusy(busy) {
+    const btn   = document.getElementById('google-signin-btn');
+    const label = document.getElementById('signin-label');
+    if (btn)   btn.disabled = busy;
+    if (label) label.textContent = busy ? 'Signing in…' : 'Continue with Google';
+}
+
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        idToken = await user.getIdToken();
+        updateUserProfileUI(user);
+        hideLoginModal();
+        checkUserPreferences();
     } else {
         idToken = null;
+        updateUserProfileUI(null);
+        closeWelcomeModal();
+        showLoginModal();
 
-        if (authBtnDesktop) authBtnDesktop.textContent = 'Admin Login';
-        if (authBtnMobile)  authBtnMobile.textContent  = 'Admin Login';
-        if (navAdmin)       navAdmin.classList.add('hidden');
-        if (mobileAdmin)    mobileAdmin.classList.add('hidden');
-
-        // Redirect admin page back to home on sign-out
         const adminSection = document.getElementById('admin-section');
         if (adminSection && !adminSection.classList.contains('hidden')) {
             showSection('home');
@@ -66,28 +122,26 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
-// ──────────────────────────────────────────────────────────────
-// AUTH TOGGLE (Login / Logout)
-// ──────────────────────────────────────────────────────────────
+async function signInWithGoogle() {
+    setSignInBusy(true);
+    try {
+        await auth.signInWithPopup(provider);
+        showToast('Signed in successfully. Welcome!', 'success');
+    } catch (error) {
+        if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+            showToast(`Login failed: ${error.message}`, 'error');
+        }
+    } finally {
+        setSignInBusy(false);
+    }
+}
 
-async function toggleAuth() {
-    if (auth.currentUser) {
-        try {
-            await auth.signOut();
-            showToast('Logged out successfully.', 'success');
-        } catch (error) {
-            showToast(`Logout failed: ${error.message}`, 'error');
-        }
-    } else {
-        try {
-            await auth.signInWithPopup(provider);
-            showToast('Logged in successfully! Welcome.', 'success');
-        } catch (error) {
-            // error.code 'auth/popup-closed-by-user' is not a real error — user just closed the popup
-            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-                showToast(`Login failed: ${error.message}`, 'error');
-            }
-        }
+async function handleSignOut() {
+    try {
+        await auth.signOut();
+        showToast('Signed out successfully.', 'success');
+    } catch (error) {
+        showToast(`Sign out failed: ${error.message}`, 'error');
     }
 }
 
@@ -136,9 +190,14 @@ function closeMobileMenu() {
 const SECTIONS = ['home', 'upload', 'admin'];
 
 function showSection(sectionId) {
+    if (!auth.currentUser) {
+        showLoginModal();
+        return;
+    }
+
     // Guard admin section — require a valid token
     if (sectionId === 'admin' && !idToken) {
-        showToast('Please log in as an admin first.', 'error');
+        showToast('Please sign in first.', 'error');
         return;
     }
 
@@ -604,15 +663,22 @@ function updateModalSemesters() {
 // ──────────────────────────────────────────────────────────────
 
 function checkUserPreferences() {
+    if (!auth.currentUser) {
+        showLoginModal();
+        return;
+    }
+
     const year = localStorage.getItem('campusNotesYear');
     const sem  = localStorage.getItem('campusNotesSemester');
 
     if (!year || !sem) {
         openWelcomeModal();
+        fetchResources();
     } else {
         fetchResources(year, sem);
         updatePreferenceBanner(year, sem);
         document.getElementById('filterYear').value = year;
+        document.getElementById('filterSemester').value = sem;
     }
 }
 
@@ -625,6 +691,7 @@ function openWelcomeModal() {
 
 function closeWelcomeModal() {
     const modal = document.getElementById('welcome-modal');
+    if (!modal) return;
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 }
@@ -638,6 +705,7 @@ function saveUserPreferences() {
 
     closeWelcomeModal();
     document.getElementById('filterYear').value = year;
+    document.getElementById('filterSemester').value = sem;
     fetchResources(year, sem);
     updatePreferenceBanner(year, sem);
 }
@@ -665,15 +733,11 @@ document.addEventListener('keydown', (e) => {
         handleSearch();
     }
     if (e.key === 'Escape') {
-        const modal = document.getElementById('welcome-modal');
-        if (modal && !modal.classList.contains('hidden')) closeModalAndShowAll();
+        const welcome = document.getElementById('welcome-modal');
+        if (welcome && !welcome.classList.contains('hidden') && auth.currentUser) {
+            closeModalAndShowAll();
+        }
     }
 });
 
-// ──────────────────────────────────────────────────────────────
-// INITIALISE
-// ──────────────────────────────────────────────────────────────
-
-window.addEventListener('DOMContentLoaded', () => {
-    checkUserPreferences();
-});
+// Auth listener handles first-time login, then year/semester.

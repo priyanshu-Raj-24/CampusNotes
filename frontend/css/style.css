@@ -131,8 +131,24 @@ body {
 }
 
 #mobile-menu.open {
-    max-height: 200px;
+    max-height: 480px;
     opacity: 1;
+}
+
+@media (max-width: 640px) {
+    #toast-container {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+    }
+
+    .toast {
+        max-width: 100%;
+    }
+
+    .drop-zone {
+        padding: 1.25rem;
+    }
 }
 
 /* ----------------------------------------
