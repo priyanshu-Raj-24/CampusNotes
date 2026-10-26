@@ -20,6 +20,7 @@
             <nav class="hidden md:flex gap-6">
                 <a href="#" class="text-[#747A76] hover:text-[#285744] font-medium" onclick="showSection('home')">Browse</a>
                 <a href="#" class="text-[#747A76] hover:text-[#285744] font-medium">Recent</a>
+                <a href="#" class="text-[#747A76] hover:text-[#285744] font-medium" onclick="showSection('admin')">Admin</a>
             </nav>
             <div>
                 <button onclick="showSection('upload')" class="bg-[#285744] hover:bg-[#1e4233] text-white px-5 py-2 rounded-md font-medium transition-colors">
@@ -34,17 +35,58 @@
         
         <!-- Home Section -->
         <section id="home-section" class="block">
-            <div class="text-center max-w-3xl mx-auto mb-16">
+            <div class="text-center max-w-3xl mx-auto mb-12">
                 <h1 class="text-4xl md:text-5xl font-bold mb-4 text-[#202522]">Your Campus. Your Notes. <br>One Shared Library.</h1>
                 <p class="text-lg text-[#747A76]">Discover lecture notes, previous-year papers, lab manuals, and academic resources organized by semester.</p>
             </div>
+
+            <!-- Search & Filter Bar -->
+            <div class="bg-white p-4 rounded-xl border border-[#E5E7E2] mb-6 flex flex-wrap gap-4 items-center shadow-sm">
+                <input type="text" id="searchInput" placeholder="Search by title or subject..." class="flex-grow border border-[#E5E7E2] rounded-md px-4 py-2 focus:outline-none focus:border-[#285744]">
+                <select id="filterYear" class="border border-[#E5E7E2] rounded-md px-4 py-2 bg-white">
+                    <option value="">Any Year</option>
+                    <option value="1">Year 1</option>
+                    <option value="2">Year 2</option>
+                    <option value="3">Year 3</option>
+                    <option value="4">Year 4</option>
+                </select>
+                <button onclick="handleSearch()" class="bg-[#202522] hover:bg-black text-white px-6 py-2 rounded-md font-medium transition-colors">Search</button>
+            </div>
             
+            <!-- Active Preference Banner -->
+            <div id="active-preference-banner" class="hidden mb-6 bg-[#EAF0EB] text-[#285744] px-4 py-3 rounded-lg flex justify-between items-center border border-[#c3d6cb]">
+                <span id="preference-text" class="font-medium text-sm"></span>
+                <button onclick="openWelcomeModal()" class="text-xs font-bold hover:underline bg-white px-3 py-1 rounded border border-[#c3d6cb]">Change</button>
+            </div>
+
             <h2 class="text-2xl font-bold mb-6">Recently Published</h2>
             <div id="resources-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Resources injected via JS -->
                 <div class="col-span-full text-center py-10 text-[#747A76]" id="loading-indicator">
                     Loading resources...
                 </div>
+            </div>
+        </section>
+
+        <!-- Admin Section -->
+        <section id="admin-section" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-[#202522]">Moderation Dashboard</h2>
+            </div>
+            <div class="bg-white border border-[#E5E7E2] rounded-xl overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-[#F8F8F5] border-b border-[#E5E7E2] text-sm text-[#747A76]">
+                            <th class="p-4 font-semibold">Resource</th>
+                            <th class="p-4 font-semibold">Subject</th>
+                            <th class="p-4 font-semibold">Status</th>
+                            <th class="p-4 font-semibold text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body">
+                        <!-- Admin rows injected here -->
+                    </tbody>
+                </table>
             </div>
         </section>
 
@@ -59,7 +101,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-1">Academic Year</label>
-                        <select id="academicYear" class="w-full border border-[#E5E7E2] rounded-md px-4 py-2 bg-white">
+                        <select id="academicYear" class="w-full border border-[#E5E7E2] rounded-md px-4 py-2 bg-white" onchange="updateUploadSemesters()">
                             <option value="1">Year 1</option>
                             <option value="2">Year 2</option>
                             <option value="3">Year 3</option>
@@ -101,6 +143,38 @@
             </form>
         </section>
     </main>
+
+    <!-- Welcome Modal -->
+    <div id="welcome-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-2 text-[#202522]">Welcome to CampusNotes</h2>
+            <p class="text-[#747A76] mb-6">Select your current year and semester to see relevant study materials instantly.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Academic Year</label>
+                    <select id="modal-year" class="w-full border border-[#E5E7E2] rounded-md px-4 py-2 bg-white" onchange="updateModalSemesters()">
+                        <option value="1">Year 1</option>
+                        <option value="2">Year 2</option>
+                        <option value="3">Year 3</option>
+                        <option value="4">Year 4</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Semester</label>
+                    <select id="modal-semester" class="w-full border border-[#E5E7E2] rounded-md px-4 py-2 bg-white">
+                        <option value="1">Semester 1</option>
+                        <option value="2">Semester 2</option>
+                    </select>
+                </div>
+                <button onclick="saveUserPreferences()" class="w-full bg-[#285744] hover:bg-[#1e4233] text-white px-5 py-3 rounded-md font-medium transition-colors mt-4">
+                    Show My Resources
+                </button>
+                <button onclick="closeModalAndShowAll()" class="w-full text-[#747A76] hover:text-[#202522] text-sm mt-2">
+                    Skip and browse all
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="js/app.js"></script>
 </body>

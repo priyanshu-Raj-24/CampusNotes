@@ -2,35 +2,37 @@ const API_BASE = 'http://localhost:5000/api';
 
 // Simple Single Page App Routing
 function showSection(sectionId) {
-    // Hide all sections
     document.getElementById('home-section').classList.add('hidden');
     document.getElementById('upload-section').classList.add('hidden');
     
     const adminSection = document.getElementById('admin-section');
     if (adminSection) adminSection.classList.add('hidden');
 
-    // Show the requested section
     document.getElementById(`${sectionId}-section`).classList.remove('hidden');
     
-    // Fetch data based on the active section
     if (sectionId === 'home') {
-        fetchResources();
+        checkUserPreferences();
     } else if (sectionId === 'admin') {
         fetchAdminResources();
     }
 }
 
 // Fetch and display resources (Homepage)
-async function fetchResources() {
+async function fetchResources(prefYear = null, prefSemester = null) {
     const grid = document.getElementById('resources-grid');
     grid.innerHTML = '<div class="col-span-full text-center py-10 text-[#747A76]">Loading resources...</div>';
 
     try {
-        const response = await fetch(`${API_BASE}/resources`);
+        let url = `${API_BASE}/resources`;
+        if (prefYear && prefSemester) {
+            url = `${API_BASE}/search?year=${prefYear}&semester=${prefSemester}`;
+        }
+
+        const response = await fetch(url);
         const resources = await response.json();
 
         if (resources.length === 0) {
-            grid.innerHTML = '<div class="col-span-full text-center py-10 bg-white border border-[#E5E7E2] rounded-lg text-[#747A76]">No resources have been published yet. Be the first to upload!</div>';
+            grid.innerHTML = '<div class="col-span-full text-center py-10 bg-white border border-[#E5E7E2] rounded-lg text-[#747A76]">No resources found for this selection yet. Be the first to upload!</div>';
             return;
         }
 
@@ -201,7 +203,73 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     }
 });
 
+// --- Dynamic Form Logic ---
+function updateUploadSemesters() {
+    const year = parseInt(document.getElementById('academicYear').value);
+    const semSelect = document.getElementById('semester');
+    const startSem = (year - 1) * 2 + 1;
+    semSelect.innerHTML = `
+        <option value="${startSem}">Semester ${startSem}</option>
+        <option value="${startSem + 1}">Semester ${startSem + 1}</option>
+    `;
+}
+
+// --- Modal & Preference Logic ---
+function updateModalSemesters() {
+    const year = parseInt(document.getElementById('modal-year').value);
+    const semSelect = document.getElementById('modal-semester');
+    const startSem = (year - 1) * 2 + 1;
+    semSelect.innerHTML = `
+        <option value="${startSem}">Semester ${startSem}</option>
+        <option value="${startSem + 1}">Semester ${startSem + 1}</option>
+    `;
+}
+
+function checkUserPreferences() {
+    const year = localStorage.getItem('campusNotesYear');
+    const sem = localStorage.getItem('campusNotesSemester');
+    
+    if (!year || !sem) {
+        openWelcomeModal();
+    } else {
+        fetchResources(year, sem);
+        updatePreferenceBanner(year, sem);
+        document.getElementById('filterYear').value = year;
+    }
+}
+
+function openWelcomeModal() {
+    document.getElementById('welcome-modal').classList.remove('hidden');
+    updateModalSemesters(); 
+}
+
+function saveUserPreferences() {
+    const year = document.getElementById('modal-year').value;
+    const sem = document.getElementById('modal-semester').value;
+    
+    localStorage.setItem('campusNotesYear', year);
+    localStorage.setItem('campusNotesSemester', sem);
+    
+    document.getElementById('welcome-modal').classList.add('hidden');
+    document.getElementById('filterYear').value = year;
+    
+    fetchResources(year, sem);
+    updatePreferenceBanner(year, sem);
+}
+
+function closeModalAndShowAll() {
+    document.getElementById('welcome-modal').classList.add('hidden');
+    document.getElementById('active-preference-banner').classList.add('hidden');
+    fetchResources(); 
+}
+
+function updatePreferenceBanner(year, sem) {
+    const text = document.getElementById('preference-text');
+    text.innerText = `📚 Showing resources tailored for Year ${year}, Semester ${sem}`;
+    document.getElementById('active-preference-banner').classList.remove('hidden');
+}
+
 // Init
 window.addEventListener('DOMContentLoaded', () => {
-    fetchResources();
+    checkUserPreferences();
 });
