@@ -1,89 +1,89 @@
 const express = require('express');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
-const { db } = require('../config/firebase'); 
+const { db } = require('../config/firebase');
+const { getAuth } = require('firebase-admin/auth');
 require('dotenv').config();
 
 const router = express.Router();
 
-// Configure Cloudinary
+// ──────────────────────────────────────────────────────────────
+// CLOUDINARY CONFIG
+// ──────────────────────────────────────────────────────────────
+
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    api_key:    process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configure Multer to hold files in memory temporarily
+// ──────────────────────────────────────────────────────────────
+// MULTER (hold file in memory before Cloudinary upload)
+// ──────────────────────────────────────────────────────────────
+
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+    limits:  { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
-// Helper function to stream memory buffer to Cloudinary
-const uploadToCloudinary = (fileBuffer, originalFilename) => {
+// ──────────────────────────────────────────────────────────────
+// CLOUDINARY UPLOAD HELPER
+// ──────────────────────────────────────────────────────────────
+
+const uploadToCloudinary = (fileBuffer) => {
     return new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-            { 
-                resource_type: 'auto', // Automatically handles PDFs, DOCX, Images, etc.
-                folder: 'campusnotes' 
-            },
+        const stream = cloudinary.uploader.upload_stream(
+            { resource_type: 'auto', folder: 'campusnotes' },
             (error, result) => {
                 if (error) reject(error);
                 else resolve(result);
             }
         );
-        uploadStream.end(fileBuffer);
+        stream.end(fileBuffer);
     });
 };
+
+// ──────────────────────────────────────────────────────────────
+// AUTH MIDDLEWARE  — verifies Firebase ID token from Bearer header
+// Apply this to any admin-only route.
+// ──────────────────────────────────────────────────────────────
+
+async function verifyFirebaseToken(req, res, next) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized: No token provided.' });
+    }
+
+    const idToken = authHeader.split('Bearer ')[1];
+
+    try {
+        const decodedToken = await getAuth().verifyIdToken(idToken);
+        req.user = decodedToken; // attach uid, email, etc. to request
+        next();
+    } catch (error) {
+        console.error('Token verification failed:', error.message);
+        return res.status(403).json({ error: 'Forbidden: Invalid or expired token.' });
+    }
+}
+
+// ──────────────────────────────────────────────────────────────
+// PUBLIC ROUTES
+// ──────────────────────────────────────────────────────────────
 
 // GET: Fetch published resources
 router.get('/resources', async (req, res) => {
     try {
-        const snapshot = await db.collection('resources').where('status', '==', 'published').orderBy('createdAt', 'desc').get();
+        const snapshot = await db.collection('resources')
+            .where('status', '==', 'published')
+            .orderBy('createdAt', 'desc')
+            .get();
         const resources = [];
         snapshot.forEach(doc => resources.push({ id: doc.id, ...doc.data() }));
         res.status(200).json(resources);
     } catch (error) {
-        // ADD THIS LINE to reveal the hidden error:
-        console.error("Database Fetch Error:", error); 
+        console.error('Database fetch error:', error);
         res.status(500).json({ error: 'Failed to fetch resources' });
-    }
-});
-
-// POST: Upload a new resource
-router.post('/resources', upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
-        const { title, academicYear, semester, subject, category } = req.body;
-        const originalFilename = req.file.originalname;
-
-        // 1. Upload file to Cloudinary
-        const cloudResult = await uploadToCloudinary(req.file.buffer, originalFilename);
-        
-        // 2. Save metadata to Firestore
-        const resourceId = db.collection('resources').doc().id;
-        const resourceData = {
-            id: resourceId,
-            title,
-            academicYear: parseInt(academicYear),
-            semesterNumber: parseInt(semester),
-            subject,
-            category,
-            originalFilename,
-            storageObjectPath: cloudResult.public_id,
-            downloadUrl: cloudResult.secure_url, // Persistent global URL
-            mimeType: req.file.mimetype,
-            fileSizeBytes: req.file.size,
-            status: 'published',
-            createdAt: new Date().toISOString()
-        };
-
-        await db.collection('resources').doc(resourceId).set(resourceData);
-        res.status(201).json({ message: 'Upload successful', resource: resourceData });
-    } catch (error) {
-        console.error("Upload error:", error);
-        res.status(500).json({ error: 'Upload failed due to server error' });
     }
 });
 
@@ -93,48 +93,109 @@ router.get('/search', async (req, res) => {
         const { q, year, semester, category } = req.query;
         let queryRef = db.collection('resources').where('status', '==', 'published');
 
-        if (year) queryRef = queryRef.where('academicYear', '==', parseInt(year));
+        if (year)     queryRef = queryRef.where('academicYear',   '==', parseInt(year));
         if (semester) queryRef = queryRef.where('semesterNumber', '==', parseInt(semester));
-        if (category) queryRef = queryRef.where('category', '==', category);
+        if (category) queryRef = queryRef.where('category',       '==', category);
 
         const snapshot = await queryRef.orderBy('createdAt', 'desc').get();
         let resources = [];
         snapshot.forEach(doc => resources.push({ id: doc.id, ...doc.data() }));
 
+        // Client-side text filter (Firestore doesn't do full-text search natively)
         if (q) {
-            const searchLower = q.toLowerCase();
-            resources = resources.filter(r => 
-                r.title.toLowerCase().includes(searchLower) || 
-                r.subject.toLowerCase().includes(searchLower)
+            const lower = q.toLowerCase();
+            resources = resources.filter(r =>
+                r.title.toLowerCase().includes(lower) ||
+                r.subject.toLowerCase().includes(lower)
             );
         }
 
         res.status(200).json(resources);
     } catch (error) {
-        // ADD THIS LINE to reveal the missing index link:
-        console.error("Search API Error:", error); 
+        console.error('Search API error:', error);
         res.status(500).json({ error: 'Search failed' });
     }
 });
-// GET: Admin fetch all resources
-router.get('/admin/resources', async (req, res) => {
+
+// POST: Upload a new resource
+router.post('/resources', upload.single('file'), async (req, res) => {
     try {
-        const snapshot = await db.collection('resources').orderBy('createdAt', 'desc').get();
+        if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+        const { title, academicYear, semester, subject, category, fileExtension } = req.body;
+
+        // Required field validation
+        if (!title || !academicYear || !semester || !subject || !category) {
+            return res.status(400).json({ error: 'Missing required fields: title, academicYear, semester, subject, category' });
+        }
+
+        const originalFilename = req.file.originalname;
+        const ext = fileExtension || originalFilename.split('.').pop().toLowerCase();
+
+        // Upload to Cloudinary
+        const cloudResult = await uploadToCloudinary(req.file.buffer);
+
+        // Save metadata to Firestore
+        const resourceId   = db.collection('resources').doc().id;
+        const resourceData = {
+            id:                resourceId,
+            title:             title.trim(),
+            academicYear:      parseInt(academicYear),
+            semesterNumber:    parseInt(semester),
+            subject:           subject.trim(),
+            category,
+            fileExtension:     ext,
+            originalFilename,
+            storageObjectPath: cloudResult.public_id,
+            downloadUrl:       cloudResult.secure_url,
+            mimeType:          req.file.mimetype,
+            fileSizeBytes:     req.file.size,
+            status:            'pending_review', // Admin must approve before it goes public
+            createdAt:         new Date().toISOString(),
+        };
+
+        await db.collection('resources').doc(resourceId).set(resourceData);
+        res.status(201).json({ message: 'Upload successful – pending review', resource: resourceData });
+
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ error: 'Upload failed due to a server error' });
+    }
+});
+
+// ──────────────────────────────────────────────────────────────
+// ADMIN ROUTES  (protected by verifyFirebaseToken middleware)
+// ──────────────────────────────────────────────────────────────
+
+// GET: Fetch all resources (any status) — admin only
+router.get('/admin/resources', verifyFirebaseToken, async (req, res) => {
+    try {
+        const snapshot = await db.collection('resources')
+            .orderBy('createdAt', 'desc')
+            .get();
         const resources = [];
         snapshot.forEach(doc => resources.push({ id: doc.id, ...doc.data() }));
         res.status(200).json(resources);
     } catch (error) {
+        console.error('Admin fetch error:', error);
         res.status(500).json({ error: 'Failed to fetch admin resources' });
     }
 });
 
-// PATCH: Admin change resource status
-router.patch('/admin/resources/:id/status', async (req, res) => {
+// PATCH: Update resource status — admin only
+router.patch('/admin/resources/:id/status', verifyFirebaseToken, async (req, res) => {
     try {
         const { status } = req.body;
+        const allowed = ['published', 'pending_review', 'restricted'];
+
+        if (!status || !allowed.includes(status)) {
+            return res.status(400).json({ error: `Invalid status. Must be one of: ${allowed.join(', ')}` });
+        }
+
         await db.collection('resources').doc(req.params.id).update({ status });
         res.status(200).json({ message: `Resource status updated to ${status}` });
     } catch (error) {
+        console.error('Status update error:', error);
         res.status(500).json({ error: 'Failed to update status' });
     }
 });

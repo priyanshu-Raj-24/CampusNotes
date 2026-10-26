@@ -1,26 +1,276 @@
+/* ============================================================
+   CampusNotes – Frontend Application
+   Firebase Auth (compat SDK) + Full App Logic
+   ============================================================ */
+
 const API_BASE = 'http://localhost:5000/api';
 
-// Simple Single Page App Routing
-function showSection(sectionId) {
-    document.getElementById('home-section').classList.add('hidden');
-    document.getElementById('upload-section').classList.add('hidden');
-    
-    const adminSection = document.getElementById('admin-section');
-    if (adminSection) adminSection.classList.add('hidden');
+// ──────────────────────────────────────────────────────────────
+// FIREBASE CONFIG & INITIALISATION
+// (Uses the compat SDK loaded via <script> tags in index.html.
+//  Do NOT mix with ES module `import` statements here.)
+// ──────────────────────────────────────────────────────────────
 
-    document.getElementById(`${sectionId}-section`).classList.remove('hidden');
-    
-    if (sectionId === 'home') {
-        checkUserPreferences();
-    } else if (sectionId === 'admin') {
-        fetchAdminResources();
+const firebaseConfig = {
+    apiKey:            "AIzaSyBzA2Vpn-oKMkv5SxyY6bCQ-hMrVd1Exa4",
+    authDomain:        "campusnotes-a2720.firebaseapp.com",
+    projectId:         "campusnotes-a2720",
+    storageBucket:     "campusnotes-a2720.firebasestorage.app",
+    messagingSenderId: "1084104758698",
+    appId:             "1:1084104758698:web:fbd0b3d4bfca8262f2c7d3",
+    measurementId:     "G-B1ZDDNM07G"
+};
+
+// Guard against double-initialisation (e.g. hot-reload)
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+const auth     = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
+
+let idToken = null; // Stores the signed-in user's JWT for secured API calls
+
+// ──────────────────────────────────────────────────────────────
+// AUTH STATE LISTENER
+// Runs immediately and whenever the user signs in / out.
+// ──────────────────────────────────────────────────────────────
+
+auth.onAuthStateChanged(async (user) => {
+    const authBtnDesktop = document.getElementById('auth-btn-desktop');
+    const authBtnMobile  = document.getElementById('auth-btn-mobile');
+    const navAdmin       = document.getElementById('nav-admin-link');
+    const mobileAdmin    = document.getElementById('mobile-admin-link');
+
+    if (user) {
+        // Refresh token (tokens expire after 1 hour)
+        idToken = await user.getIdToken();
+
+        if (authBtnDesktop) authBtnDesktop.textContent = `Logout (${user.displayName || user.email})`;
+        if (authBtnMobile)  authBtnMobile.textContent  = 'Logout';
+        if (navAdmin)       navAdmin.classList.remove('hidden');
+        if (mobileAdmin)    mobileAdmin.classList.remove('hidden');
+    } else {
+        idToken = null;
+
+        if (authBtnDesktop) authBtnDesktop.textContent = 'Admin Login';
+        if (authBtnMobile)  authBtnMobile.textContent  = 'Admin Login';
+        if (navAdmin)       navAdmin.classList.add('hidden');
+        if (mobileAdmin)    mobileAdmin.classList.add('hidden');
+
+        // Redirect admin page back to home on sign-out
+        const adminSection = document.getElementById('admin-section');
+        if (adminSection && !adminSection.classList.contains('hidden')) {
+            showSection('home');
+        }
+    }
+});
+
+// ──────────────────────────────────────────────────────────────
+// AUTH TOGGLE (Login / Logout)
+// ──────────────────────────────────────────────────────────────
+
+async function toggleAuth() {
+    if (auth.currentUser) {
+        try {
+            await auth.signOut();
+            showToast('Logged out successfully.', 'success');
+        } catch (error) {
+            showToast(`Logout failed: ${error.message}`, 'error');
+        }
+    } else {
+        try {
+            await auth.signInWithPopup(provider);
+            showToast('Logged in successfully! Welcome.', 'success');
+        } catch (error) {
+            // error.code 'auth/popup-closed-by-user' is not a real error — user just closed the popup
+            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+                showToast(`Login failed: ${error.message}`, 'error');
+            }
+        }
     }
 }
 
-// Fetch and display resources (Homepage)
+// ──────────────────────────────────────────────────────────────
+// TOAST NOTIFICATIONS
+// ──────────────────────────────────────────────────────────────
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const icons = { success: '✓', error: '✕', info: 'ℹ' };
+    toast.innerHTML = `<span class="text-base font-bold">${icons[type] || 'ℹ'}</span><span>${message}</span>`;
+    container.appendChild(toast);
+
+    // Auto-remove after animation (3.6s display + 0.4s fadeout)
+    setTimeout(() => toast.remove(), 4100);
+}
+
+// ──────────────────────────────────────────────────────────────
+// MOBILE MENU
+// ──────────────────────────────────────────────────────────────
+
+function toggleMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    const btn  = document.getElementById('hamburger-btn');
+    const isOpen = menu.classList.toggle('open');
+    btn.setAttribute('aria-expanded', String(isOpen));
+}
+
+function closeMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    const btn  = document.getElementById('hamburger-btn');
+    if (!menu) return;
+    menu.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+}
+
+// ──────────────────────────────────────────────────────────────
+// SECTION ROUTER
+// ──────────────────────────────────────────────────────────────
+
+const SECTIONS = ['home', 'upload', 'admin'];
+
+function showSection(sectionId) {
+    // Guard admin section — require a valid token
+    if (sectionId === 'admin' && !idToken) {
+        showToast('Please log in as an admin first.', 'error');
+        return;
+    }
+
+    SECTIONS.forEach(id => {
+        const el = document.getElementById(`${id}-section`);
+        if (el) el.classList.add('hidden');
+    });
+
+    const target = document.getElementById(`${sectionId}-section`);
+    if (target) target.classList.remove('hidden');
+
+    closeMobileMenu();
+
+    if (sectionId === 'home')  checkUserPreferences();
+    if (sectionId === 'admin') fetchAdminResources();
+}
+
+// ──────────────────────────────────────────────────────────────
+// RESOURCE CARD BUILDER  (single source of truth)
+// ──────────────────────────────────────────────────────────────
+
+const FILE_TYPE_ICONS = {
+    pdf:  '📄',
+    docx: '📝',
+    doc:  '📝',
+    txt:  '📃',
+    png:  '🖼️',
+    jpg:  '🖼️',
+    jpeg: '🖼️',
+};
+
+const CATEGORY_COLORS = {
+    'Lecture Notes':                 'bg-blue-50 text-blue-700',
+    'Previous Year Question Papers': 'bg-amber-50 text-amber-700',
+    'Lab Manuals':                   'bg-purple-50 text-purple-700',
+    'Reference Materials':           'bg-[#EAF0EB] text-[#285744]',
+};
+
+function formatFileSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024)            return `${bytes} B`;
+    if (bytes < 1024 * 1024)     return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function formatDate(isoString) {
+    if (!isoString) return '';
+    try {
+        return new Date(isoString).toLocaleDateString('en-IN', {
+            day: 'numeric', month: 'short', year: 'numeric',
+        });
+    } catch {
+        return '';
+    }
+}
+
+function buildResourceCard(res) {
+    const ext      = (res.fileExtension || (res.originalFilename ? res.originalFilename.split('.').pop() : 'file')).toLowerCase();
+    const icon     = FILE_TYPE_ICONS[ext] || '📎';
+    const catColor = CATEGORY_COLORS[res.category] || 'bg-gray-100 text-gray-700';
+    const size     = formatFileSize(res.fileSizeBytes);
+    const date     = formatDate(res.createdAt);
+    const catLabel = res.category === 'Previous Year Question Papers' ? 'Question Papers' : res.category;
+
+    return `
+    <article class="resource-card" aria-label="${res.title}">
+        <div class="flex justify-between items-start mb-3 gap-2">
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${catColor} truncate">${catLabel}</span>
+            <span class="text-xs text-[#747A76] whitespace-nowrap flex-shrink-0">Y${res.academicYear} · S${res.semesterNumber}</span>
+        </div>
+        <div class="flex items-start gap-3 mb-2">
+            <span class="text-2xl flex-shrink-0 mt-0.5" aria-hidden="true">${icon}</span>
+            <div class="min-w-0">
+                <h3 class="font-bold text-base text-[#202522] leading-snug line-clamp-2">${res.title}</h3>
+                <p class="text-sm text-[#747A76] mt-0.5 truncate">${res.subject}</p>
+            </div>
+        </div>
+        <div class="mt-auto pt-3 border-t border-[#E5E7E2] flex justify-between items-center gap-2">
+            <div class="text-xs text-[#747A76] truncate">
+                <span class="uppercase font-medium">${ext}</span>${size ? ` · ${size}` : ''}${date ? ` · ${date}` : ''}
+            </div>
+            <a href="${res.downloadUrl}" target="_blank" rel="noopener noreferrer"
+                class="text-[#285744] hover:underline font-semibold text-sm flex-shrink-0 flex items-center gap-1"
+                aria-label="Download ${res.title}">
+                Download
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"/>
+                </svg>
+            </a>
+        </div>
+    </article>`;
+}
+
+function buildEmptyState(message) {
+    return `<div class="col-span-full flex flex-col items-center justify-center py-16 text-center">
+        <div class="text-5xl mb-4">📭</div>
+        <p class="text-[#747A76] text-base font-medium">${message}</p>
+    </div>`;
+}
+
+function buildErrorState(message) {
+    return `<div class="col-span-full flex flex-col items-center justify-center py-16 text-center">
+        <div class="text-5xl mb-4">⚠️</div>
+        <p class="text-red-600 text-base font-medium">${message}</p>
+    </div>`;
+}
+
+const SPINNER_HTML = `<div class="col-span-full flex justify-center py-10">
+    <svg class="w-8 h-8 text-[#285744] animate-spin" viewBox="0 0 24 24" fill="none">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+    </svg>
+</div>`;
+
+const SKELETON_CARD = `<div class="resource-card">
+    <div class="skeleton h-5 w-2/3 mb-3 rounded"></div>
+    <div class="skeleton h-4 w-full mb-2 rounded"></div>
+    <div class="skeleton h-4 w-1/2 mb-6 rounded"></div>
+    <div class="skeleton h-3 w-full rounded"></div>
+</div>`;
+
+// ──────────────────────────────────────────────────────────────
+// FETCH & DISPLAY RESOURCES
+// ──────────────────────────────────────────────────────────────
+
 async function fetchResources(prefYear = null, prefSemester = null) {
-    const grid = document.getElementById('resources-grid');
-    grid.innerHTML = '<div class="col-span-full text-center py-10 text-[#747A76]">Loading resources...</div>';
+    const grid    = document.getElementById('resources-grid');
+    const countEl = document.getElementById('resource-count');
+    const titleEl = document.getElementById('resource-section-title');
+
+    grid.innerHTML  = Array(3).fill(SKELETON_CARD).join('');
+    countEl.textContent = '';
 
     try {
         let url = `${API_BASE}/resources`;
@@ -28,207 +278,335 @@ async function fetchResources(prefYear = null, prefSemester = null) {
             url = `${API_BASE}/search?year=${prefYear}&semester=${prefSemester}`;
         }
 
-        const response = await fetch(url);
+        const response  = await fetch(url);
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
         const resources = await response.json();
 
-        if (resources.length === 0) {
-            grid.innerHTML = '<div class="col-span-full text-center py-10 bg-white border border-[#E5E7E2] rounded-lg text-[#747A76]">No resources found for this selection yet. Be the first to upload!</div>';
-            return;
-        }
+        titleEl.textContent = prefYear
+            ? `Resources for Year ${prefYear}, Semester ${prefSemester}`
+            : 'Recently Published';
+        countEl.textContent = resources.length
+            ? `${resources.length} resource${resources.length !== 1 ? 's' : ''}`
+            : '';
 
-        grid.innerHTML = resources.map(res => `
-            <div class="bg-white border border-[#E5E7E2] rounded-xl p-5 hover:shadow-md transition-shadow flex flex-col h-full">
-                <div class="flex justify-between items-start mb-3">
-                    <span class="text-xs font-semibold px-2 py-1 bg-[#EAF0EB] text-[#285744] rounded">${res.category}</span>
-                    <span class="text-xs text-[#747A76]">Year ${res.academicYear} • Sem ${res.semesterNumber}</span>
-                </div>
-                <h3 class="font-bold text-lg mb-1 text-[#202522]">${res.title}</h3>
-                <p class="text-sm text-[#747A76] mb-4">${res.subject}</p>
-                <div class="mt-auto pt-4 border-t border-[#E5E7E2] flex justify-between items-center">
-                    <span class="text-xs text-[#747A76] uppercase">${res.fileExtension || 'FILE'} • ${(res.fileSizeBytes / 1024 / 1024).toFixed(2)} MB</span>
-                    <a href="${res.downloadUrl}" target="_blank" class="text-[#285744] hover:underline font-medium text-sm">Download</a>
-                </div>
-            </div>
-        `).join('');
+        grid.innerHTML = resources.length
+            ? resources.map(buildResourceCard).join('')
+            : buildEmptyState('No resources found for this selection yet. Be the first to upload!');
 
     } catch (error) {
         console.error('Error fetching resources:', error);
-        grid.innerHTML = '<div class="col-span-full text-center py-10 text-red-600">Failed to load resources. Is the backend running?</div>';
+        grid.innerHTML = buildErrorState('Failed to load resources. Is the backend running?');
     }
 }
 
-// --- Search Functionality ---
-async function handleSearch() {
-    const q = document.getElementById('searchInput').value;
-    const year = document.getElementById('filterYear').value;
-    
-    const queryParams = new URLSearchParams();
-    if (q) queryParams.append('q', q);
-    if (year) queryParams.append('year', year);
+// ──────────────────────────────────────────────────────────────
+// SEARCH
+// ──────────────────────────────────────────────────────────────
 
-    const grid = document.getElementById('resources-grid');
-    grid.innerHTML = '<div class="col-span-full text-center py-10 text-[#747A76]">Searching...</div>';
+async function handleSearch() {
+    const q        = document.getElementById('searchInput').value.trim();
+    const year     = document.getElementById('filterYear').value;
+    const semester = document.getElementById('filterSemester').value;
+    const category = document.getElementById('filterCategory').value;
+
+    const grid    = document.getElementById('resources-grid');
+    const countEl = document.getElementById('resource-count');
+    const titleEl = document.getElementById('resource-section-title');
+
+    // If nothing entered, reset to all
+    if (!q && !year && !semester && !category) {
+        titleEl.textContent = 'Recently Published';
+        fetchResources();
+        return;
+    }
+
+    grid.innerHTML  = SPINNER_HTML;
+    countEl.textContent = '';
+
+    const params = new URLSearchParams();
+    if (q)        params.append('q', q);
+    if (year)     params.append('year', year);
+    if (semester) params.append('semester', semester);
+    if (category) params.append('category', category);
 
     try {
-        const response = await fetch(`${API_BASE}/search?${queryParams.toString()}`);
+        const response  = await fetch(`${API_BASE}/search?${params.toString()}`);
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
         const resources = await response.json();
 
-        if (resources.length === 0) {
-            grid.innerHTML = '<div class="col-span-full text-center py-10 bg-white border border-[#E5E7E2] rounded-lg text-[#747A76]">No matching resources found.</div>';
+        const parts = [];
+        if (q)        parts.push(`"${q}"`);
+        if (year)     parts.push(`Year ${year}`);
+        if (semester) parts.push(`Sem ${semester}`);
+        if (category) parts.push(category);
+        titleEl.textContent = `Search results for ${parts.join(' · ')}`;
+        countEl.textContent = resources.length
+            ? `${resources.length} result${resources.length !== 1 ? 's' : ''}`
+            : '';
+
+        grid.innerHTML = resources.length
+            ? resources.map(buildResourceCard).join('')
+            : buildEmptyState('No matching resources found. Try different keywords or filters.');
+
+    } catch (error) {
+        console.error('Search error:', error);
+        grid.innerHTML = buildErrorState('Search failed. Please try again.');
+        showToast('Search failed. Is the backend running?', 'error');
+    }
+}
+
+// ──────────────────────────────────────────────────────────────
+// ADMIN PANEL (Token-secured)
+// ──────────────────────────────────────────────────────────────
+
+async function fetchAdminResources() {
+    if (!idToken) {
+        showToast('Session expired. Please log in again.', 'error');
+        showSection('home');
+        return;
+    }
+
+    const tbody = document.getElementById('admin-table-body');
+    tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-[#747A76]">
+        <svg class="w-6 h-6 animate-spin text-[#285744] mx-auto" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+        </svg>
+    </td></tr>`;
+
+    try {
+        // Refresh token before each admin call in case it's expired
+        if (auth.currentUser) idToken = await auth.currentUser.getIdToken();
+
+        const response = await fetch(`${API_BASE}/admin/resources`, {
+            headers: { 'Authorization': `Bearer ${idToken}` },
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            showToast('Access denied. Admin only.', 'error');
+            showSection('home');
             return;
         }
 
-        grid.innerHTML = resources.map(res => `
-            <div class="bg-white border border-[#E5E7E2] rounded-xl p-5 hover:shadow-md transition-shadow flex flex-col h-full">
-                <div class="flex justify-between items-start mb-3">
-                    <span class="text-xs font-semibold px-2 py-1 bg-[#EAF0EB] text-[#285744] rounded">${res.category}</span>
-                    <span class="text-xs text-[#747A76]">Year ${res.academicYear} • Sem ${res.semesterNumber}</span>
-                </div>
-                <h3 class="font-bold text-lg mb-1 text-[#202522]">${res.title}</h3>
-                <p class="text-sm text-[#747A76] mb-4">${res.subject}</p>
-                <div class="mt-auto pt-4 border-t border-[#E5E7E2] flex justify-between items-center">
-                    <span class="text-xs text-[#747A76] uppercase">${res.fileExtension || 'FILE'} • ${(res.fileSizeBytes / 1024 / 1024).toFixed(2)} MB</span>
-                    <a href="${res.downloadUrl}" target="_blank" class="text-[#285744] hover:underline font-medium text-sm">Download</a>
-                </div>
-            </div>
-        `).join('');
-    } catch (error) {
-        console.error('Search error:', error);
-        grid.innerHTML = '<div class="col-span-full text-center py-10 text-red-600">Search failed.</div>';
-    }
-}
-
-// --- Admin Functionality ---
-async function fetchAdminResources() {
-    const tbody = document.getElementById('admin-table-body');
-    tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-[#747A76]">Loading data...</td></tr>';
-
-    try {
-        const response = await fetch(`${API_BASE}/admin/resources`);
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
         const resources = await response.json();
 
+        if (resources.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-[#747A76]">No resources found.</td></tr>';
+            return;
+        }
+
+        const STATUS_STYLES = {
+            'published':      'bg-green-100 text-green-800',
+            'pending_review': 'bg-amber-100 text-amber-800',
+            'restricted':     'bg-red-100 text-red-800',
+        };
+
         tbody.innerHTML = resources.map(res => {
-            const statusColors = {
-                'published': 'bg-green-100 text-green-800',
-                'pending_review': 'bg-yellow-100 text-yellow-800',
-                'restricted': 'bg-red-100 text-red-800'
-            };
-            const colorClass = statusColors[res.status] || 'bg-gray-100 text-gray-800';
+            const colorClass  = STATUS_STYLES[res.status] || 'bg-gray-100 text-gray-800';
+            const statusLabel = res.status.replace(/_/g, ' ');
+            const date        = formatDate(res.createdAt);
+
+            const publishBtn  = res.status !== 'published'
+                ? `<button onclick="updateStatus('${res.id}', 'published')"  class="text-xs text-green-700 font-semibold hover:underline mr-3">Publish</button>`
+                : '';
+            const restrictBtn = res.status !== 'restricted'
+                ? `<button onclick="updateStatus('${res.id}', 'restricted')" class="text-xs text-red-700   font-semibold hover:underline">Restrict</button>`
+                : '';
 
             return `
-            <tr class="border-b border-[#E5E7E2] hover:bg-[#F8F8F5]">
+            <tr class="border-b border-[#E5E7E2] hover:bg-[#F8F8F5] transition-colors">
                 <td class="p-4">
-                    <div class="font-medium text-[#202522]">${res.title}</div>
-                    <div class="text-xs text-[#747A76] mt-1 break-all">${res.originalFilename}</div>
+                    <div class="font-medium text-[#202522] line-clamp-1">${res.title}</div>
+                    <div class="text-xs text-[#747A76] mt-0.5">${res.originalFilename}${date ? ` · ${date}` : ''}</div>
                 </td>
-                <td class="p-4 text-sm text-[#747A76]">${res.subject} (Y${res.academicYear} S${res.semesterNumber})</td>
+                <td class="p-4 text-sm text-[#747A76] whitespace-nowrap">
+                    ${res.subject} <span class="text-[#c3d6cb]">|</span> Y${res.academicYear} S${res.semesterNumber}
+                </td>
                 <td class="p-4">
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${colorClass}">${res.status}</span>
+                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full capitalize ${colorClass}">${statusLabel}</span>
                 </td>
-                <td class="p-4 text-right space-x-2">
-                    <button onclick="updateStatus('${res.id}', 'published')" class="text-xs text-green-700 font-medium hover:underline">Publish</button>
-                    <button onclick="updateStatus('${res.id}', 'restricted')" class="text-xs text-red-700 font-medium hover:underline">Restrict</button>
+                <td class="p-4 text-right whitespace-nowrap">
+                    ${publishBtn}${restrictBtn}
+                    ${!publishBtn && !restrictBtn ? '<span class="text-xs text-[#747A76]">—</span>' : ''}
                 </td>
-            </tr>
-            `;
+            </tr>`;
         }).join('');
+
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-red-600">Failed to load admin panel.</td></tr>';
+        console.error('Admin fetch error:', error);
+        tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-red-600">Failed to load admin panel. Is the backend running?</td></tr>';
     }
 }
 
 async function updateStatus(id, newStatus) {
-    if (!confirm(`Are you sure you want to mark this resource as ${newStatus}?`)) return;
+    if (!confirm(`Mark this resource as "${newStatus.replace(/_/g, ' ')}"?`)) return;
+    if (!idToken) { showToast('Not authenticated. Please log in again.', 'error'); return; }
 
     try {
-        await fetch(`${API_BASE}/admin/resources/${id}/status`, {
+        // Refresh token
+        if (auth.currentUser) idToken = await auth.currentUser.getIdToken();
+
+        const response = await fetch(`${API_BASE}/admin/resources/${id}/status`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus })
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ status: newStatus }),
         });
-        fetchAdminResources(); // Refresh the table
+
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+        showToast(`Resource marked as ${newStatus.replace(/_/g, ' ')}.`, 'success');
+        fetchAdminResources();
     } catch (error) {
-        alert('Failed to update status.');
+        console.error('updateStatus error:', error);
+        showToast('Failed to update status. Please try again.', 'error');
     }
 }
 
-// Handle Form Submission
+// ──────────────────────────────────────────────────────────────
+// UPLOAD FORM
+// ──────────────────────────────────────────────────────────────
+
+function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').classList.add('drag-over');
+}
+function handleDragLeave() {
+    document.getElementById('drop-zone').classList.remove('drag-over');
+}
+function handleDrop(e) {
+    e.preventDefault();
+    handleDragLeave();
+    const file = e.dataTransfer.files[0];
+    if (file) applySelectedFile(file);
+}
+function handleFileSelect(input) {
+    if (input.files[0]) applySelectedFile(input.files[0]);
+}
+
+function applySelectedFile(file) {
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('File exceeds the 10 MB limit. Please choose a smaller file.', 'error');
+        return;
+    }
+    const allowed = ['.pdf', '.doc', '.docx', '.txt', '.png', '.jpg', '.jpeg'];
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!allowed.includes(ext)) {
+        showToast(`File type "${ext}" is not supported.`, 'error');
+        return;
+    }
+
+    // Transfer file to the hidden input
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('file').files = dt.files;
+
+    document.getElementById('drop-label').innerHTML =
+        `<span class="text-[#285744] font-semibold">✓ ${file.name}</span> <span class="text-[#747A76] text-xs">(${formatFileSize(file.size)})</span>`;
+}
+
+function validateUploadForm() {
+    const fields = [
+        { id: 'title',        msg: 'Please enter a resource title.'    },
+        { id: 'academicYear', msg: 'Please select an academic year.'   },
+        { id: 'semester',     msg: 'Please select a semester.'         },
+        { id: 'subject',      msg: 'Please enter the subject name.'    },
+        { id: 'category',     msg: 'Please select a category.'         },
+    ];
+    for (const { id, msg } of fields) {
+        if (!document.getElementById(id).value.trim()) {
+            showToast(msg, 'error');
+            document.getElementById(id).focus();
+            return false;
+        }
+    }
+    if (!document.getElementById('file').files[0]) {
+        showToast('Please select a file to upload.', 'error');
+        return false;
+    }
+    return true;
+}
+
 document.getElementById('upload-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    const submitBtn = document.getElementById('submit-btn');
-    const statusDiv = document.getElementById('upload-status');
-    const fileInput = document.getElementById('file');
-    
+    if (!validateUploadForm()) return;
+
+    const submitBtn     = document.getElementById('submit-btn');
+    const submitLabel   = document.getElementById('submit-label');
+    const submitSpinner = document.getElementById('submit-spinner');
+
     submitBtn.disabled = true;
-    submitBtn.innerText = 'Uploading...';
-    statusDiv.classList.remove('hidden', 'text-red-600', 'text-green-600');
-    statusDiv.innerText = 'Uploading to secure storage...';
+    submitLabel.textContent = 'Uploading…';
+    submitSpinner.classList.remove('hidden');
+
+    const file = document.getElementById('file').files[0];
+    const ext  = file.name.split('.').pop().toLowerCase();
 
     const formData = new FormData();
-    formData.append('title', document.getElementById('title').value);
-    formData.append('academicYear', document.getElementById('academicYear').value);
-    formData.append('semester', document.getElementById('semester').value);
-    formData.append('subject', document.getElementById('subject').value);
-    formData.append('category', document.getElementById('category').value);
-    formData.append('file', fileInput.files[0]);
+    formData.append('title',         document.getElementById('title').value.trim());
+    formData.append('academicYear',  document.getElementById('academicYear').value);
+    formData.append('semester',      document.getElementById('semester').value);
+    formData.append('subject',       document.getElementById('subject').value.trim());
+    formData.append('category',      document.getElementById('category').value);
+    formData.append('fileExtension', ext);
+    formData.append('file',          file);
 
     try {
         const response = await fetch(`${API_BASE}/resources`, {
             method: 'POST',
-            body: formData
+            body: formData,
         });
-
         const data = await response.json();
 
         if (response.ok) {
-            statusDiv.classList.add('text-green-600');
-            statusDiv.innerText = 'Upload successful! Redirecting...';
+            showToast('Upload successful! It will be reviewed before going live.', 'success');
             document.getElementById('upload-form').reset();
-            
-            setTimeout(() => {
-                showSection('home');
-                statusDiv.classList.add('hidden');
-                submitBtn.disabled = false;
-                submitBtn.innerText = 'Upload & Publish';
-            }, 2000);
+            document.getElementById('drop-label').innerHTML =
+                `Drag & drop your file here, or <span class="text-[#285744] underline cursor-pointer">browse</span>`;
+            setTimeout(() => showSection('home'), 1500);
         } else {
             throw new Error(data.error || 'Upload failed');
         }
     } catch (error) {
-        statusDiv.classList.add('text-red-600');
-        statusDiv.innerText = `Error: ${error.message}`;
+        showToast(`Upload failed: ${error.message}`, 'error');
+    } finally {
         submitBtn.disabled = false;
-        submitBtn.innerText = 'Upload & Publish';
+        submitLabel.textContent = 'Upload & Submit for Review';
+        submitSpinner.classList.add('hidden');
     }
 });
 
-// --- Dynamic Form Logic ---
-function updateUploadSemesters() {
-    const year = parseInt(document.getElementById('academicYear').value);
-    const semSelect = document.getElementById('semester');
-    const startSem = (year - 1) * 2 + 1;
-    semSelect.innerHTML = `
-        <option value="${startSem}">Semester ${startSem}</option>
-        <option value="${startSem + 1}">Semester ${startSem + 1}</option>
-    `;
+// ──────────────────────────────────────────────────────────────
+// DYNAMIC SEMESTER SELECTS
+// ──────────────────────────────────────────────────────────────
+
+function getSemesterOptions(year) {
+    const start = (year - 1) * 2 + 1;
+    return `<option value="${start}">Semester ${start}</option>
+            <option value="${start + 1}">Semester ${start + 1}</option>`;
 }
 
-// --- Modal & Preference Logic ---
+function updateUploadSemesters() {
+    const year = parseInt(document.getElementById('academicYear').value);
+    if (!year) return;
+    document.getElementById('semester').innerHTML = getSemesterOptions(year);
+}
+
 function updateModalSemesters() {
     const year = parseInt(document.getElementById('modal-year').value);
-    const semSelect = document.getElementById('modal-semester');
-    const startSem = (year - 1) * 2 + 1;
-    semSelect.innerHTML = `
-        <option value="${startSem}">Semester ${startSem}</option>
-        <option value="${startSem + 1}">Semester ${startSem + 1}</option>
-    `;
+    document.getElementById('modal-semester').innerHTML = getSemesterOptions(year);
 }
+
+// ──────────────────────────────────────────────────────────────
+// PREFERENCES & WELCOME MODAL
+// ──────────────────────────────────────────────────────────────
 
 function checkUserPreferences() {
     const year = localStorage.getItem('campusNotesYear');
-    const sem = localStorage.getItem('campusNotesSemester');
-    
+    const sem  = localStorage.getItem('campusNotesSemester');
+
     if (!year || !sem) {
         openWelcomeModal();
     } else {
@@ -239,37 +617,63 @@ function checkUserPreferences() {
 }
 
 function openWelcomeModal() {
-    document.getElementById('welcome-modal').classList.remove('hidden');
-    updateModalSemesters(); 
+    const modal = document.getElementById('welcome-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    updateModalSemesters();
+}
+
+function closeWelcomeModal() {
+    const modal = document.getElementById('welcome-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
 }
 
 function saveUserPreferences() {
     const year = document.getElementById('modal-year').value;
-    const sem = document.getElementById('modal-semester').value;
-    
+    const sem  = document.getElementById('modal-semester').value;
+
     localStorage.setItem('campusNotesYear', year);
     localStorage.setItem('campusNotesSemester', sem);
-    
-    document.getElementById('welcome-modal').classList.add('hidden');
+
+    closeWelcomeModal();
     document.getElementById('filterYear').value = year;
-    
     fetchResources(year, sem);
     updatePreferenceBanner(year, sem);
 }
 
 function closeModalAndShowAll() {
-    document.getElementById('welcome-modal').classList.add('hidden');
+    closeWelcomeModal();
     document.getElementById('active-preference-banner').classList.add('hidden');
-    fetchResources(); 
+    localStorage.removeItem('campusNotesYear');
+    localStorage.removeItem('campusNotesSemester');
+    fetchResources();
 }
 
 function updatePreferenceBanner(year, sem) {
-    const text = document.getElementById('preference-text');
-    text.innerText = `📚 Showing resources tailored for Year ${year}, Semester ${sem}`;
+    document.getElementById('preference-text').textContent =
+        `📚 Showing resources for Year ${year}, Semester ${sem}`;
     document.getElementById('active-preference-banner').classList.remove('hidden');
 }
 
-// Init
+// ──────────────────────────────────────────────────────────────
+// KEYBOARD SHORTCUTS
+// ──────────────────────────────────────────────────────────────
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && document.activeElement.id === 'searchInput') {
+        handleSearch();
+    }
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('welcome-modal');
+        if (modal && !modal.classList.contains('hidden')) closeModalAndShowAll();
+    }
+});
+
+// ──────────────────────────────────────────────────────────────
+// INITIALISE
+// ──────────────────────────────────────────────────────────────
+
 window.addEventListener('DOMContentLoaded', () => {
     checkUserPreferences();
 });
