@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path'); // Add this line
 require('dotenv').config();
 const apiRoutes = require('./routes/api');
 
@@ -11,8 +12,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve frontend static files
-app.use(express.static('../frontend'));
+
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 // API Routes
 app.use('/api', apiRoutes);
