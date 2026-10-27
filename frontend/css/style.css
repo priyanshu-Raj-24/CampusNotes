@@ -1,12 +1,103 @@
 
 body {
     font-family: 'Manrope', sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(40, 87, 68, 0.08), transparent 28%),
+        linear-gradient(180deg, #f8f8f5 0%, #f3f6f2 100%);
+}
+
+.soft-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 0.9rem;
+    border-radius: 9999px;
+    background: #eaf0eb;
+    color: #285744;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #e5e7e2;
+    border-radius: 1rem;
+    padding: 1rem 1.2rem;
+    box-shadow: 0 10px 30px rgba(32, 37, 34, 0.04);
+}
+
+.stat-number {
+    font-size: clamp(1.25rem, 2vw, 1.8rem);
+    font-weight: 800;
+    color: #202522;
+}
+
+.stat-label {
+    font-size: 0.82rem;
+    color: #747a76;
+    margin-top: 0.1rem;
+}
+
+.feature-card {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid #e5e7e2;
+    border-radius: 1rem;
+    padding: 1.2rem;
+    box-shadow: 0 10px 28px rgba(32, 37, 34, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px rgba(32, 37, 34, 0.07);
+}
+
+.feature-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    background: #eaf0eb;
+    font-size: 1.35rem;
+    margin-bottom: 0.8rem;
+}
+
+.feature-card h3 {
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 0.45rem;
+    color: #202522;
+}
+
+.feature-card p {
+    color: #747a76;
+    line-height: 1.6;
+    font-size: 0.95rem;
 }
 
 /* --- Custom focus ring that matches brand green --- */
 :focus-visible {
     outline: 2px solid #285744;
     outline-offset: 2px;
+}
+
+.line-clamp-1,
+.line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+}
+
+.line-clamp-1 {
+    -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+    -webkit-line-clamp: 2;
 }
 
 .resource-card {

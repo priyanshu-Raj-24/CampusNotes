@@ -3,10 +3,8 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { db } = require('../config/firebase');
 const { getAuth } = require('firebase-admin/auth');
-require('dotenv').config();
 
 const router = express.Router();
-
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -15,18 +13,28 @@ cloudinary.config({
 });
 
 // MULTER (hold file in memory before Cloudinary upload)
-
 const upload = multer({
     storage: multer.memoryStorage(),
     limits:  { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
 // CLOUDINARY UPLOAD HELPER
+// resource_type:'raw' is required for PDFs, DOCX, TXT, etc. so Cloudinary
+// stores them as raw files and serves them with a publicly accessible URL.
+// 'auto' maps those types to 'image', which can trigger 401 ACL errors.
+const uploadToCloudinary = (fileBuffer, mimetype) => {
+    // Use 'image' only for true image uploads; everything else (PDF, DOCX, TXT…) → 'raw'
+    const imageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    const resourceType = imageTypes.includes(mimetype) ? 'image' : 'raw';
 
-const uploadToCloudinary = (fileBuffer) => {
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-            { resource_type: 'auto', folder: 'campusnotes' },
+            {
+                resource_type: resourceType,
+                folder: 'campusnotes',
+                // type:'upload' is the default public delivery type
+                type: 'upload',
+            },
             (error, result) => {
                 if (error) reject(error);
                 else resolve(result);
@@ -37,8 +45,6 @@ const uploadToCloudinary = (fileBuffer) => {
 };
 
 // AUTH MIDDLEWARE  — verifies Firebase ID token from Bearer header
-
-
 async function verifyFirebaseToken(req, res, next) {
     const authHeader = req.headers.authorization;
 
@@ -57,7 +63,6 @@ async function verifyFirebaseToken(req, res, next) {
         return res.status(403).json({ error: 'Forbidden: Invalid or expired token.' });
     }
 }
-
 
 // GET: Fetch published resources
 router.get('/resources', async (req, res) => {
@@ -121,7 +126,7 @@ router.post('/resources', upload.single('file'), async (req, res) => {
         const ext = fileExtension || originalFilename.split('.').pop().toLowerCase();
 
         // Upload to Cloudinary
-        const cloudResult = await uploadToCloudinary(req.file.buffer);
+        const cloudResult = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
 
         // Save metadata to Firestore
         const resourceId   = db.collection('resources').doc().id;
@@ -151,9 +156,47 @@ router.post('/resources', upload.single('file'), async (req, res) => {
     }
 });
 
-// ──────────────────────────────────────────────────────────────
-// ADMIN ROUTES  (protected by verifyFirebaseToken middleware)
-// ──────────────────────────────────────────────────────────────
+// GET: Download a resource — forces file download via Content-Disposition header
+router.get('/download/:id', async (req, res) => {
+    try {
+        const doc = await db.collection('resources').doc(req.params.id).get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: 'Resource not found.' });
+        }
+
+        const resource = doc.data();
+
+        if (resource.status !== 'published') {
+            return res.status(403).json({ error: 'This resource is not available for download.' });
+        }
+
+        // Fetch the file from Cloudinary 
+        const fileUrl  = resource.downloadUrl;
+        const filename = resource.originalFilename || `file.${resource.fileExtension || 'bin'}`;
+
+        const https    = require('https');
+        const http     = require('http');
+        const protocol = fileUrl.startsWith('https') ? https : http;
+
+        protocol.get(fileUrl, (fileStream) => {
+            if (fileStream.statusCode !== 200) {
+                return res.status(502).json({ error: 'Failed to fetch file from storage.' });
+            }
+
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+            res.setHeader('Content-Type', resource.mimeType || 'application/octet-stream');
+            fileStream.pipe(res);
+        }).on('error', (err) => {
+            console.error('Download proxy error:', err);
+            res.status(502).json({ error: 'Download failed.' });
+        });
+
+    } catch (error) {
+        console.error('Download route error:', error);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
 
 // GET: Fetch all resources (any status) — admin only
 router.get('/admin/resources', verifyFirebaseToken, async (req, res) => {

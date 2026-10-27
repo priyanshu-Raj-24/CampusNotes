@@ -1,5 +1,13 @@
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = (() => {
+    const configured = window.CAMPUSNOTES_API_BASE;
+    if (configured && configured.trim()) return configured.replace(/\/$/, '');
+
+    const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+    if (isLocalHost) return 'http://localhost:5000/api';
+
+    return `${window.location.origin}/api`;
+})();
 
 
 const firebaseConfig = {
@@ -38,6 +46,9 @@ function updateUserProfileUI(user) {
     const mobileName   = document.getElementById('mobile-user-name');
     const greeting     = document.getElementById('modal-greeting');
 
+    const navAdminLink    = document.getElementById('nav-admin-link');
+    const mobileAdminLink = document.getElementById('mobile-admin-link');
+
     if (user) {
         const name = user.displayName || user.email || 'Student';
         const url  = getAvatarUrl(user);
@@ -59,6 +70,10 @@ function updateUserProfileUI(user) {
         }
         if (mobileName) mobileName.textContent = name;
         if (greeting)   greeting.textContent = `Hi, ${name.split(' ')[0]}`;
+
+        // Show Admin link for all signed-in users
+        if (navAdminLink)    navAdminLink.classList.remove('hidden');
+        if (mobileAdminLink) mobileAdminLink.classList.remove('hidden');
     } else {
         if (profile) {
             profile.classList.add('hidden');
@@ -66,6 +81,10 @@ function updateUserProfileUI(user) {
         }
         if (mobileInfo) mobileInfo.classList.add('hidden');
         if (greeting)   greeting.textContent = '';
+
+        // Hide Admin link when signed out
+        if (navAdminLink)    navAdminLink.classList.add('hidden');
+        if (mobileAdminLink) mobileAdminLink.classList.add('hidden');
     }
 }
 
@@ -254,9 +273,10 @@ function buildResourceCard(res) {
             <div class="text-xs text-[#747A76] truncate">
                 <span class="uppercase font-medium">${ext}</span>${size ? ` · ${size}` : ''}${date ? ` · ${date}` : ''}
             </div>
-            <a href="${res.downloadUrl}" target="_blank" rel="noopener noreferrer"
+            <a href="${API_BASE}/download/${res.id}"
                 class="text-[#285744] hover:underline font-semibold text-sm flex-shrink-0 flex items-center gap-1"
-                aria-label="Download ${res.title}">
+                aria-label="Download ${res.title}"
+                download="${res.originalFilename || res.title}">
                 Download
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"/>
