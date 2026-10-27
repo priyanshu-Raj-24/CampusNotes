@@ -13,6 +13,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Log every incoming request — helps debug routing issues
+app.use((req, _res, next) => {
+    console.log(`>> ${req.method} ${req.originalUrl}`);
+    next();
+});
+
 app.use(express.static(frontendPath));
 
 app.get('/health', (req, res) => {

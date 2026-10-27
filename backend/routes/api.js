@@ -44,7 +44,17 @@ const uploadToCloudinary = (fileBuffer, mimetype) => {
     });
 };
 
-// AUTH MIDDLEWARE  — verifies Firebase ID token from Bearer header
+// Reads ADMIN_EMAILS from .env (comma-separated) and checks if an email is in the list.
+function isAdminEmail(email) {
+    if (!email) return false;
+    const adminEmails = (process.env.ADMIN_EMAILS || '')
+        .split(',')
+        .map(e => e.trim().toLowerCase())
+        .filter(Boolean);
+    return adminEmails.includes(email.toLowerCase());
+}
+
+// AUTH MIDDLEWARE — verifies Firebase ID token from Bearer header
 async function verifyFirebaseToken(req, res, next) {
     const authHeader = req.headers.authorization;
 
@@ -56,12 +66,21 @@ async function verifyFirebaseToken(req, res, next) {
 
     try {
         const decodedToken = await getAuth().verifyIdToken(idToken);
-        req.user = decodedToken; // attach uid, email, etc. to request
+        req.user     = decodedToken;                        // uid, email, etc.
+        req.isAdmin  = isAdminEmail(decodedToken.email);   // true/false
         next();
     } catch (error) {
         console.error('Token verification failed:', error.message);
         return res.status(403).json({ error: 'Forbidden: Invalid or expired token.' });
     }
+}
+
+// ADMIN GUARD MIDDLEWARE — must be used after verifyFirebaseToken
+function requireAdmin(req, res, next) {
+    if (!req.isAdmin) {
+        return res.status(403).json({ error: 'Forbidden: Admin access only.' });
+    }
+    next();
 }
 
 // GET: Fetch published resources
@@ -72,7 +91,7 @@ router.get('/resources', async (req, res) => {
             .orderBy('createdAt', 'desc')
             .get();
         const resources = [];
-        snapshot.forEach(doc => resources.push({ id: doc.id, ...doc.data() }));
+        snapshot.forEach(doc => resources.push({ ...doc.data(), id: doc.id }));
         res.status(200).json(resources);
     } catch (error) {
         console.error('Database fetch error:', error);
@@ -92,9 +111,9 @@ router.get('/search', async (req, res) => {
 
         const snapshot = await queryRef.orderBy('createdAt', 'desc').get();
         let resources = [];
-        snapshot.forEach(doc => resources.push({ id: doc.id, ...doc.data() }));
+        snapshot.forEach(doc => resources.push({ ...doc.data(), id: doc.id }));
 
-        // Client-side text filter (Firestore doesn't do full-text search natively)
+        // Client-side text filter 
         if (q) {
             const lower = q.toLowerCase();
             resources = resources.filter(r =>
@@ -198,14 +217,20 @@ router.get('/download/:id', async (req, res) => {
     }
 });
 
+// ADMIN ROUTES  (protected by verifyFirebaseToken + requireAdmin)
+
+router.get('/admin/verify', verifyFirebaseToken, (req, res) => {
+    res.status(200).json({ isAdmin: req.isAdmin });
+});
+
 // GET: Fetch all resources (any status) — admin only
-router.get('/admin/resources', verifyFirebaseToken, async (req, res) => {
+router.get('/admin/resources', verifyFirebaseToken, requireAdmin, async (req, res) => {
     try {
         const snapshot = await db.collection('resources')
             .orderBy('createdAt', 'desc')
             .get();
         const resources = [];
-        snapshot.forEach(doc => resources.push({ id: doc.id, ...doc.data() }));
+        snapshot.forEach(doc => resources.push({ ...doc.data(), id: doc.id }));
         res.status(200).json(resources);
     } catch (error) {
         console.error('Admin fetch error:', error);
@@ -214,7 +239,7 @@ router.get('/admin/resources', verifyFirebaseToken, async (req, res) => {
 });
 
 // PATCH: Update resource status — admin only
-router.patch('/admin/resources/:id/status', verifyFirebaseToken, async (req, res) => {
+router.patch('/admin/resources/:id/status', verifyFirebaseToken, requireAdmin, async (req, res) => {
     try {
         const { status } = req.body;
         const allowed = ['published', 'pending_review', 'restricted'];
@@ -228,6 +253,44 @@ router.patch('/admin/resources/:id/status', verifyFirebaseToken, async (req, res
     } catch (error) {
         console.error('Status update error:', error);
         res.status(500).json({ error: 'Failed to update status' });
+    }
+});
+
+// DELETE: Permanently delete a resource — admin only
+// Removes the file from Cloudinary AND the metadata from Firestore.
+router.delete('/admin/resources/:id', verifyFirebaseToken, requireAdmin, async (req, res) => {
+    try {
+        const doc = await db.collection('resources').doc(req.params.id).get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: 'Resource not found.' });
+        }
+
+        const resource = doc.data();
+
+        // Determine the Cloudinary resource_type from the stored mimeType
+        const imageTypes  = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+        const resourceType = imageTypes.includes(resource.mimeType) ? 'image' : 'raw';
+
+        // 1. Delete file from Cloudinary
+        if (resource.storageObjectPath) {
+            const cloudResult = await cloudinary.uploader.destroy(
+                resource.storageObjectPath,
+                { resource_type: resourceType }
+            );
+            if (cloudResult.result !== 'ok' && cloudResult.result !== 'not found') {
+                console.warn('Cloudinary delete returned unexpected result:', cloudResult);
+            }
+        }
+
+        // 2. Delete metadata from Firestore
+        await db.collection('resources').doc(req.params.id).delete();
+
+        res.status(200).json({ message: 'Resource deleted successfully from Cloudinary and Firestore.' });
+
+    } catch (error) {
+        console.error('Delete resource error:', error);
+        res.status(500).json({ error: 'Failed to delete resource.' });
     }
 });
 

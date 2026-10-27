@@ -71,9 +71,7 @@ function updateUserProfileUI(user) {
         if (mobileName) mobileName.textContent = name;
         if (greeting)   greeting.textContent = `Hi, ${name.split(' ')[0]}`;
 
-        // Show Admin link for all signed-in users
-        if (navAdminLink)    navAdminLink.classList.remove('hidden');
-        if (mobileAdminLink) mobileAdminLink.classList.remove('hidden');
+        // Admin link is shown/hidden by checkAdminStatus() after token is ready
     } else {
         if (profile) {
             profile.classList.add('hidden');
@@ -115,11 +113,13 @@ auth.onAuthStateChanged(async (user) => {
         updateUserProfileUI(user);
         hideLoginModal();
         checkUserPreferences();
+        checkAdminStatus(); // Show/hide Admin link based on server-verified admin role
     } else {
         idToken = null;
         updateUserProfileUI(null);
         closeWelcomeModal();
         showLoginModal();
+        setAdminLinkVisible(false); // Always hide Admin link on sign-out
 
         const adminSection = document.getElementById('admin-section');
         if (adminSection && !adminSection.classList.contains('hidden')) {
@@ -127,6 +127,45 @@ auth.onAuthStateChanged(async (user) => {
         }
     }
 });
+
+// Check with the backend whether the signed-in user is an admin,
+// then show or hide the Admin nav link accordingly.
+async function checkAdminStatus() {
+    const navAdminLink    = document.getElementById('nav-admin-link');
+    const mobileAdminLink = document.getElementById('mobile-admin-link');
+
+    // Hide first — will only be revealed if server confirms admin
+    setAdminLinkVisible(false);
+
+    try {
+        if (!idToken && auth.currentUser) idToken = await auth.currentUser.getIdToken();
+        if (!idToken) return;
+
+        const res  = await fetch(`${API_BASE}/admin/verify`, {
+            headers: { 'Authorization': `Bearer ${idToken}` },
+        });
+        const data = await res.json();
+
+        if (res.ok && data.isAdmin) {
+            setAdminLinkVisible(true);
+        }
+    } catch (err) {
+        // Network error or backend down — keep Admin link hidden
+        console.warn('Admin status check failed:', err.message);
+    }
+}
+
+function setAdminLinkVisible(visible) {
+    const navAdminLink    = document.getElementById('nav-admin-link');
+    const mobileAdminLink = document.getElementById('mobile-admin-link');
+    if (visible) {
+        if (navAdminLink)    navAdminLink.classList.remove('hidden');
+        if (mobileAdminLink) mobileAdminLink.classList.remove('hidden');
+    } else {
+        if (navAdminLink)    navAdminLink.classList.add('hidden');
+        if (mobileAdminLink) mobileAdminLink.classList.add('hidden');
+    }
+}
 
 async function signInWithGoogle() {
     setSignInBusy(true);
@@ -453,11 +492,14 @@ async function fetchAdminResources() {
             const date        = formatDate(res.createdAt);
 
             const publishBtn  = res.status !== 'published'
-                ? `<button onclick="updateStatus('${res.id}', 'published')"  class="text-xs text-green-700 font-semibold hover:underline mr-3">Publish</button>`
+                ? `<button onclick="updateStatus('${res.id}', 'published')"  class="text-xs text-green-700 font-semibold hover:underline">Publish</button>`
                 : '';
             const restrictBtn = res.status !== 'restricted'
                 ? `<button onclick="updateStatus('${res.id}', 'restricted')" class="text-xs text-red-700   font-semibold hover:underline">Restrict</button>`
                 : '';
+            const deleteBtn = `<button onclick="deleteResource('${res.id}', \`${res.title.replace(/`/g, "'")}\`)"
+                class="text-xs text-white bg-red-500 hover:bg-red-600 active:bg-red-700 font-semibold px-2.5 py-1 rounded transition-colors"
+                aria-label="Delete ${res.title}">Delete</button>`;
 
             return `
             <tr class="border-b border-[#E5E7E2] hover:bg-[#F8F8F5] transition-colors">
@@ -471,9 +513,11 @@ async function fetchAdminResources() {
                 <td class="p-4">
                     <span class="px-2.5 py-1 text-xs font-semibold rounded-full capitalize ${colorClass}">${statusLabel}</span>
                 </td>
-                <td class="p-4 text-right whitespace-nowrap">
-                    ${publishBtn}${restrictBtn}
-                    ${!publishBtn && !restrictBtn ? '<span class="text-xs text-[#747A76]">—</span>' : ''}
+                <td class="p-4">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        ${publishBtn}${restrictBtn}
+                        ${deleteBtn}
+                    </div>
                 </td>
             </tr>`;
         }).join('');
@@ -507,6 +551,33 @@ async function updateStatus(id, newStatus) {
     } catch (error) {
         console.error('updateStatus error:', error);
         showToast('Failed to update status. Please try again.', 'error');
+    }
+}
+
+async function deleteResource(id, title) {
+    // Show a clear confirmation before permanently deleting
+    if (!confirm(`⚠️ Permanently delete "${title}"?\n\nThis will remove the file from Cloudinary and Firestore. This cannot be undone.`)) return;
+    if (!idToken) { showToast('Not authenticated. Please log in again.', 'error'); return; }
+
+    try {
+        // Refresh token
+        if (auth.currentUser) idToken = await auth.currentUser.getIdToken();
+
+        const response = await fetch(`${API_BASE}/admin/resources/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${idToken}` },
+        });
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || `Server error: ${response.status}`);
+        }
+
+        showToast(`"${title}" has been permanently deleted.`, 'success');
+        fetchAdminResources(); // Refresh the admin table
+    } catch (error) {
+        console.error('deleteResource error:', error);
+        showToast(`Delete failed: ${error.message}`, 'error');
     }
 }
 
