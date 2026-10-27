@@ -8,12 +8,28 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const frontendPath = path.join(__dirname, '../frontend');
 
-// Middleware
-app.use(cors());
+// CORS — allow same origin in production, localhost in dev
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow server-to-server calls (no Origin header) and localhost in dev
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (process.env.NODE_ENV !== 'production') return callback(null, true);
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Log every incoming request — helps debug routing issues
+// Request logger — lightweight, safe for production
 app.use((req, _res, next) => {
     console.log(`>> ${req.method} ${req.originalUrl}`);
     next();

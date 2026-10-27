@@ -94,10 +94,12 @@ body {
 
 .line-clamp-1 {
     -webkit-line-clamp: 1;
+    line-clamp: 1;
 }
 
 .line-clamp-2 {
     -webkit-line-clamp: 2;
+    line-clamp: 2;
 }
 
 .resource-card {
@@ -583,10 +585,7 @@ button, a, [role="button"] {
 [data-theme="dark"] .border-\[\#E5E7E2\] { border-color: #253022 !important; }
 
 
-/* ══════════════════════════════════════════════
-   IEM LOGO WATERMARK
-   Fixed, centred behind all content on every page
-   ══════════════════════════════════════════════ */
+/* IEM LOGO WATERMARK */
 
 #iem-watermark {
     position: fixed;
@@ -619,10 +618,6 @@ header, main, footer,
     opacity: 0.05;
     filter: invert(1) brightness(0.9);
 }
-
-/* ══════════════════════════════════════════════
-   DARK THEME — COMPREHENSIVE FIX
-   ══════════════════════════════════════════════ */
 
 /* Reset previous partial overrides with a full sweep */
 [data-theme="dark"],
@@ -836,10 +831,6 @@ header, main, footer,
 [data-theme="dark"] ::-webkit-scrollbar-track { background: #0d1510; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #2a4a30; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #4ade80; }
-
-/* ══════════════════════════════════════════════
-   RESPONSIVE FIXES — mobile & desktop polish
-   ══════════════════════════════════════════════ */
 
 /* Category pills: hide scrollbar but keep scroll */
 #resources-anchor::-webkit-scrollbar { display: none; }

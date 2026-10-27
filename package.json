@@ -1,8 +1,11 @@
 {
   "name": "campusnotes",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Shared academic notes platform for IEM students",
+  "main": "backend/server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
