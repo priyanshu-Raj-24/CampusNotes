@@ -295,11 +295,18 @@ function buildResourceCard(res) {
     const date     = formatDate(res.createdAt);
     const catLabel = res.category === 'Previous Year Question Papers' ? 'Question Papers' : res.category;
 
+    // Show a "NEW" badge for resources uploaded in the last 7 days
+    const isNew    = res.createdAt && (Date.now() - new Date(res.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000;
+    const newBadge = isNew ? `<span class="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 flex-shrink-0">NEW</span>` : '';
+
     return `
     <article class="resource-card" aria-label="${res.title}">
         <div class="flex justify-between items-start mb-3 gap-2">
             <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${catColor} truncate">${catLabel}</span>
-            <span class="text-xs text-[#747A76] whitespace-nowrap flex-shrink-0">Y${res.academicYear} · S${res.semesterNumber}</span>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+                ${newBadge}
+                <span class="text-xs text-[#747A76] whitespace-nowrap">Y${res.academicYear} · S${res.semesterNumber}</span>
+            </div>
         </div>
         <div class="flex items-start gap-3 mb-2">
             <span class="text-2xl flex-shrink-0 mt-0.5" aria-hidden="true">${icon}</span>
@@ -312,15 +319,24 @@ function buildResourceCard(res) {
             <div class="text-xs text-[#747A76] truncate">
                 <span class="uppercase font-medium">${ext}</span>${size ? ` · ${size}` : ''}${date ? ` · ${date}` : ''}
             </div>
-            <a href="${API_BASE}/download/${res.id}"
-                class="text-[#285744] hover:underline font-semibold text-sm flex-shrink-0 flex items-center gap-1"
-                aria-label="Download ${res.title}"
-                download="${res.originalFilename || res.title}">
-                Download
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"/>
-                </svg>
-            </a>
+            <div class="flex items-center gap-3 flex-shrink-0">
+                <button class="share-btn" onclick="shareResource('${res.id}','${res.title.replace(/'/g, "\\'")}')"
+                    aria-label="Share ${res.title}" title="Share">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                    </svg>
+                </button>
+                <a href="${API_BASE}/download/${res.id}"
+                    class="text-[#285744] hover:underline font-semibold text-sm flex items-center gap-1"
+                    aria-label="Download ${res.title}"
+                    download="${res.originalFilename || res.title}">
+                    Download
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"/>
+                    </svg>
+                </a>
+            </div>
         </div>
     </article>`;
 }
@@ -330,6 +346,26 @@ function buildEmptyState(message) {
         <div class="text-5xl mb-4">📭</div>
         <p class="text-[#747A76] text-base font-medium">${message}</p>
     </div>`;
+}
+
+async function shareResource(id, title) {
+    const url = `${window.location.origin}/api/download/${id}`;
+    if (navigator.share) {
+        // Native share sheet on mobile (Android/iOS)
+        try {
+            await navigator.share({ title: `CampusNotes – ${title}`, url });
+        } catch (e) {
+            if (e.name !== 'AbortError') showToast('Could not share.', 'error');
+        }
+    } else {
+        // Desktop fallback: copy link to clipboard
+        try {
+            await navigator.clipboard.writeText(url);
+            showToast('Link copied to clipboard!', 'success');
+        } catch {
+            showToast('Could not copy link.', 'error');
+        }
+    }
 }
 
 function buildErrorState(message) {
@@ -439,6 +475,34 @@ async function handleSearch() {
         console.error('Search error:', error);
         grid.innerHTML = buildErrorState('Search failed. Please try again.');
         showToast('Search failed. Is the backend running?', 'error');
+    }
+}
+
+// Category quick-filter pills — syncs with the dropdown and triggers a search
+function quickFilterCategory(category) {
+    // Update the active pill styling
+    document.querySelectorAll('.cat-pill').forEach(btn => {
+        btn.classList.remove('cat-pill-active');
+        btn.classList.add('cat-pill');
+    });
+    const clicked = [...document.querySelectorAll('.cat-pill')]
+        .find(btn => btn.textContent.trim().replace(/^.\s/, '') === (category === '' ? 'All' : category.replace('Previous Year Question Papers', 'Question Papers').replace('Reference Materials', 'Reference')));
+    if (clicked) clicked.classList.add('cat-pill-active');
+
+    // Sync the category dropdown so existing search logic stays consistent
+    const dropdown = document.getElementById('filterCategory');
+    if (dropdown) dropdown.value = category;
+
+    // Clear other filters and trigger the search
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filterYear').value     = '';
+    document.getElementById('filterSemester').value = '';
+
+    if (!category) {
+        document.getElementById('resource-section-title').textContent = 'Recently Published';
+        fetchResources();
+    } else {
+        handleSearch();
     }
 }
 
@@ -666,28 +730,65 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     formData.append('fileExtension', ext);
     formData.append('file',          file);
 
-    try {
-        const response = await fetch(`${API_BASE}/resources`, {
-            method: 'POST',
-            body: formData,
-        });
-        const data = await response.json();
+    // Show progress bar
+    const progressWrap  = document.getElementById('upload-progress-wrap');
+    const progressBar   = document.getElementById('upload-progress-bar');
+    const progressLabel = document.getElementById('upload-progress-label');
+    progressWrap.style.display  = 'block';
+    progressLabel.style.display = 'block';
+    progressBar.style.width     = '0%';
+    progressLabel.textContent   = 'Uploading… 0%';
 
-        if (response.ok) {
-            showToast('Upload successful! It will be reviewed before going live.', 'success');
-            document.getElementById('upload-form').reset();
-            document.getElementById('drop-label').innerHTML =
-                `Drag & drop your file here, or <span class="text-[#285744] underline cursor-pointer">browse</span>`;
-            setTimeout(() => showSection('home'), 1500);
-        } else {
-            throw new Error(data.error || 'Upload failed');
-        }
+    try {
+        await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `${API_BASE}/resources`);
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const pct = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width   = `${pct}%`;
+                    progressLabel.textContent = `Uploading… ${pct}%`;
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    progressBar.style.width   = '100%';
+                    progressLabel.textContent = 'Upload complete!';
+                    resolve(xhr.responseText);
+                } else {
+                    try {
+                        const d = JSON.parse(xhr.responseText);
+                        reject(new Error(d.error || `Server error ${xhr.status}`));
+                    } catch {
+                        reject(new Error(`Server error ${xhr.status}`));
+                    }
+                }
+            });
+
+            xhr.addEventListener('error', () => reject(new Error('Network error — check your connection.')));
+            xhr.addEventListener('abort', () => reject(new Error('Upload cancelled.')));
+
+            xhr.send(formData);
+        });
+
+        showToast('Upload successful! It will be reviewed before going live.', 'success');
+        document.getElementById('upload-form').reset();
+        document.getElementById('drop-label').innerHTML =
+            `Drag &amp; drop your file here, or <span class="text-[#285744] underline cursor-pointer">browse</span>`;
+        setTimeout(() => showSection('home'), 1500);
     } catch (error) {
         showToast(`Upload failed: ${error.message}`, 'error');
     } finally {
         submitBtn.disabled = false;
         submitLabel.textContent = 'Upload & Submit for Review';
         submitSpinner.classList.add('hidden');
+        setTimeout(() => {
+            progressWrap.style.display  = 'none';
+            progressLabel.style.display = 'none';
+            progressBar.style.width     = '0%';
+        }, 2500);
     }
 });
 
@@ -784,3 +885,45 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+// ── Back to top button ──
+const backToTopBtn = document.getElementById('back-to-top');
+if (backToTopBtn) {
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 300) {
+            backToTopBtn.classList.add('visible');
+        } else {
+            backToTopBtn.classList.remove('visible');
+        }
+    }, { passive: true });
+}
+
+
+// ── Dark / Light Theme Toggle ──────────────────────────────────
+// Persists choice in localStorage. Applied immediately on load (see <head> inline script).
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    const moon = document.getElementById('theme-icon-moon');
+    const sun  = document.getElementById('theme-icon-sun');
+    if (theme === 'dark') {
+        if (moon) moon.classList.add('hidden');
+        if (sun)  sun.classList.remove('hidden');
+    } else {
+        if (moon) moon.classList.remove('hidden');
+        if (sun)  sun.classList.add('hidden');
+    }
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const next    = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('campusNotes_theme', next);
+    applyTheme(next);
+}
+
+// Apply saved theme on JS load (also applied inline in <head> to avoid flash)
+(function () {
+    const saved = localStorage.getItem('campusNotes_theme') || 'light';
+    applyTheme(saved);
+})();
