@@ -89,15 +89,15 @@ function updateUserProfileUI(user) {
 function showLoginModal() {
     const modal = document.getElementById('login-modal');
     if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // prevent scrolling behind modal
 }
 
 function hideLoginModal() {
     const modal = document.getElementById('login-modal');
     if (!modal) return;
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+    modal.style.display = 'none';
+    document.body.style.overflow = ''; // restore scrolling
 }
 
 function setSignInBusy(busy) {
