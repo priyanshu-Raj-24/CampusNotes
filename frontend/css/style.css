@@ -836,3 +836,90 @@ header, main, footer,
 [data-theme="dark"] ::-webkit-scrollbar-track { background: #0d1510; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #2a4a30; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #4ade80; }
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE FIXES — mobile & desktop polish
+   ══════════════════════════════════════════════ */
+
+/* Category pills: hide scrollbar but keep scroll */
+#resources-anchor::-webkit-scrollbar { display: none; }
+#resources-anchor { flex-shrink: 0; }
+#resources-anchor .cat-pill { flex-shrink: 0; }
+
+/* Stat cards: tighter on very small phones */
+@media (max-width: 400px) {
+    .stat-card { padding: 0.65rem 0.7rem; }
+    .stat-number { font-size: 1rem; }
+    .stat-label { font-size: 0.7rem; }
+}
+
+/* Feature cards: no hover transform on touch devices */
+@media (hover: none) {
+    .feature-card:hover,
+    .resource-card:hover { transform: none; }
+}
+
+/* Watermark: smaller on tiny phones */
+@media (max-width: 480px) {
+    #iem-watermark {
+        width: 75vw;
+        height: 75vw;
+    }
+}
+
+/* Upload & modal inputs: prevent iOS auto-zoom (needs ≥16px) */
+@media (max-width: 639px) {
+    #upload-section input[type="text"],
+    #upload-section select,
+    #searchInput,
+    #filterYear,
+    #filterSemester,
+    #filterCategory,
+    #modal-year,
+    #modal-semester { font-size: 16px; }
+}
+
+/* Admin table: compact cells on small screens */
+@media (max-width: 768px) {
+    .admin-table-wrapper table td,
+    .admin-table-wrapper table th { padding: 0.625rem 0.75rem; }
+}
+
+/* Back-to-top & toast: respect iOS safe-area (home indicator) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    #back-to-top {
+        bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
+    #toast-container {
+        bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    }
+}
+
+/* Search bar wrapper (white card): remove horizontal overflow on tiny phones */
+@media (max-width: 360px) {
+    .bg-white.p-4.rounded-xl.border { padding: 0.75rem; }
+}
+
+/* ── Dark mode overrides for the new 2-col filter grid ── */
+[data-theme="dark"] #filterYear,
+[data-theme="dark"] #filterSemester,
+[data-theme="dark"] #filterCategory {
+    background-color: #1a2b18 !important;
+    border-color: #2a3e27 !important;
+    color: #dde8da !important;
+}
+[data-theme="dark"] #searchInput {
+    background-color: #1a2b18 !important;
+    border-color: #2a3e27 !important;
+    color: #dde8da !important;
+}
+[data-theme="dark"] #searchInput::placeholder { color: #5a7a55 !important; }
+
+/* Dark mode: search-bar outer card */
+[data-theme="dark"] .bg-white.p-4.rounded-xl.border {
+    background-color: #141e11 !important;
+    border-color: #1f2e1c !important;
+}
+
+/* Dark mode: category pills wrapper */
+[data-theme="dark"] #resources-anchor { background: transparent; }

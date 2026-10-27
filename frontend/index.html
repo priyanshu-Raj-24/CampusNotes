@@ -141,7 +141,7 @@
                 <p class="text-base sm:text-lg text-[#747A76] leading-relaxed max-w-2xl mx-auto">
                     Discover lecture notes, previous-year papers, lab manuals, and academic resources — organised by semester and designed to help students study smarter, not harder.
                 </p>
-                <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+                <div class="mt-8 grid grid-cols-3 gap-2 sm:gap-4 text-left">
                     <div class="stat-card">
                         <div class="stat-number">2.5K+</div>
                         <div class="stat-label">Study resources</div>
@@ -169,7 +169,7 @@
                 </div>
             </div>
 
-            <div class="grid gap-4 md:grid-cols-3 mb-8">
+            <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 mb-8">
                 <div class="feature-card">
                     <div class="feature-icon">📚</div>
                     <h3>Organised learning</h3>
@@ -189,45 +189,49 @@
 
             <!-- Search & Filter Bar -->
             <div class="bg-white p-4 rounded-xl border border-[#E5E7E2] mb-6 shadow-sm">
-                <div class="flex flex-col sm:flex-row sm:flex-wrap gap-3 items-stretch sm:items-center">
-                    <div class="relative flex-grow min-w-0 sm:min-w-[160px]">
+                <div class="flex flex-col gap-3">
+                    <!-- Search input — always full width -->
+                    <div class="relative w-full">
                         <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#747A76]">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
                             </svg>
                         </span>
                         <input type="text" id="searchInput" placeholder="Search by title or subject…"
-                            class="w-full pl-9 pr-4 py-2 border border-[#E5E7E2] rounded-md focus:outline-none focus:border-[#285744] transition-colors text-sm"
+                            class="w-full pl-9 pr-4 py-2.5 border border-[#E5E7E2] rounded-md focus:outline-none focus:border-[#285744] transition-colors text-sm"
                             aria-label="Search resources">
                     </div>
-                    <select id="filterYear" class="w-full sm:w-auto border border-[#E5E7E2] rounded-md px-3 py-2 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by year">
-                        <option value="">Any Year</option>
-                        <option value="1">Year 1</option>
-                        <option value="2">Year 2</option>
-                        <option value="3">Year 3</option>
-                        <option value="4">Year 4</option>
-                    </select>
-                    <select id="filterSemester" class="w-full sm:w-auto border border-[#E5E7E2] rounded-md px-3 py-2 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by semester">
-                        <option value="">Any Semester</option>
-                        <option value="1">Sem 1</option>
-                        <option value="2">Sem 2</option>
-                        <option value="3">Sem 3</option>
-                        <option value="4">Sem 4</option>
-                        <option value="5">Sem 5</option>
-                        <option value="6">Sem 6</option>
-                        <option value="7">Sem 7</option>
-                        <option value="8">Sem 8</option>
-                    </select>
-                    <select id="filterCategory" class="w-full sm:w-auto border border-[#E5E7E2] rounded-md px-3 py-2 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by category">
-                        <option value="">Any Category</option>
-                        <option value="Lecture Notes">Lecture Notes</option>
-                        <option value="Previous Year Question Papers">Question Papers</option>
-                        <option value="Lab Manuals">Lab Manuals</option>
-                        <option value="Reference Materials">Reference Materials</option>
-                    </select>
-                    <button onclick="handleSearch()" class="w-full sm:w-auto bg-[#202522] hover:bg-black text-white px-5 py-2 rounded-md font-medium transition-colors text-sm whitespace-nowrap">
-                        Search
-                    </button>
+                    <!-- Filters: 2-col grid on mobile, flex row on sm+ -->
+                    <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 sm:items-center">
+                        <select id="filterYear" class="w-full sm:w-auto border border-[#E5E7E2] rounded-md px-3 py-2.5 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by year">
+                            <option value="">Any Year</option>
+                            <option value="1">Year 1</option>
+                            <option value="2">Year 2</option>
+                            <option value="3">Year 3</option>
+                            <option value="4">Year 4</option>
+                        </select>
+                        <select id="filterSemester" class="w-full sm:w-auto border border-[#E5E7E2] rounded-md px-3 py-2.5 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by semester">
+                            <option value="">Any Semester</option>
+                            <option value="1">Sem 1</option>
+                            <option value="2">Sem 2</option>
+                            <option value="3">Sem 3</option>
+                            <option value="4">Sem 4</option>
+                            <option value="5">Sem 5</option>
+                            <option value="6">Sem 6</option>
+                            <option value="7">Sem 7</option>
+                            <option value="8">Sem 8</option>
+                        </select>
+                        <select id="filterCategory" class="col-span-2 sm:col-auto w-full sm:w-auto border border-[#E5E7E2] rounded-md px-3 py-2.5 bg-white focus:outline-none focus:border-[#285744] transition-colors text-sm" aria-label="Filter by category">
+                            <option value="">Any Category</option>
+                            <option value="Lecture Notes">Lecture Notes</option>
+                            <option value="Previous Year Question Papers">Question Papers</option>
+                            <option value="Lab Manuals">Lab Manuals</option>
+                            <option value="Reference Materials">Reference Materials</option>
+                        </select>
+                        <button onclick="handleSearch()" class="col-span-2 sm:col-auto w-full sm:w-auto bg-[#202522] hover:bg-black text-white px-5 py-2.5 rounded-md font-medium transition-colors text-sm whitespace-nowrap">
+                            Search
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -245,8 +249,8 @@
                 <span id="resource-count" class="text-sm text-[#747A76]"></span>
             </div>
 
-            <!-- Category quick-filter pills — one-tap filtering on mobile -->
-            <div id="resources-anchor" class="flex flex-wrap gap-2 mb-5" role="group" aria-label="Quick filter by category">
+            <!-- Category quick-filter pills — horizontally scrollable on mobile -->
+            <div id="resources-anchor" class="flex gap-2 mb-5 overflow-x-auto pb-1" role="group" aria-label="Quick filter by category" style="-webkit-overflow-scrolling:touch;scrollbar-width:none">
                 <button onclick="quickFilterCategory('')"
                     class="cat-pill cat-pill-active text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors">
                     All
