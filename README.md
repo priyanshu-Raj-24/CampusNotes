@@ -158,12 +158,8 @@ Admins can:
 ## 📸 Screenshots
 
 | Home | Dark Mode | Admin Panel |
-|---|---|---|
-| <img width="1917" height="917" alt="image" src="https://github.com/user-attachments/assets/a4eae36c-eb19-4cab-9e3c-f2c93ee89d3a" />
- | <img width="1886" height="902" alt="image" src="https://github.com/user-attachments/assets/d86d0edb-82a8-44fc-bfcd-8aa8d93f05b3" />
- | <img width="1917" height="871" alt="image" src="https://github.com/user-attachments/assets/66870159-25b0-422b-866c-8c627db0584d" />
- |
-
+| :---: | :---: | :---: |
+| <img width="1917" height="917" alt="Home View" src="https://github.com/user-attachments/assets/a4eae36c-eb19-4cab-9e3c-f2c93ee89d3a" /> | <img width="1886" height="902" alt="Dark Mode View" src="https://github.com/user-attachments/assets/d86d0edb-82a8-44fc-bfcd-8aa8d93f05b3" /> | <img width="1917" height="871" alt="Admin Panel View" src="https://github.com/user-attachments/assets/66870159-25b0-422b-866c-8c627db0584d" /> |
 ---
 
 ## 🤝 Contributing
