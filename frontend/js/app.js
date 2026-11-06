@@ -173,7 +173,10 @@ async function signInWithGoogle() {
         await auth.signInWithPopup(provider);
         showToast('Signed in successfully. Welcome!', 'success');
     } catch (error) {
-        if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+        console.error('Sign-in error:', error.code, error.message);
+        if (error.code === 'auth/popup-blocked') {
+            showToast('Popup blocked by browser. Please allow popups for this site and try again.', 'error');
+        } else if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
             showToast(`Login failed: ${error.message}`, 'error');
         }
     } finally {

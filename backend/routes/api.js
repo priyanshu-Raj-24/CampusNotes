@@ -103,24 +103,32 @@ router.get('/resources', async (req, res) => {
 router.get('/search', async (req, res) => {
     try {
         const { q, year, semester, category } = req.query;
-        let queryRef = db.collection('resources').where('status', '==', 'published');
 
-        if (year)     queryRef = queryRef.where('academicYear',   '==', parseInt(year));
-        if (semester) queryRef = queryRef.where('semesterNumber', '==', parseInt(semester));
-        if (category) queryRef = queryRef.where('category',       '==', category);
+        // Fetch all published resources with a single-field query to avoid
+        // Firestore composite index requirements for multi-field combinations.
+        const snapshot = await db.collection('resources')
+            .where('status', '==', 'published')
+            .get();
 
-        const snapshot = await queryRef.orderBy('createdAt', 'desc').get();
         let resources = [];
         snapshot.forEach(doc => resources.push({ ...doc.data(), id: doc.id }));
 
-        // Client-side text filter 
+        // Apply all filters in memory
+        if (year)     resources = resources.filter(r => r.academicYear   === parseInt(year));
+        if (semester) resources = resources.filter(r => r.semesterNumber === parseInt(semester));
+        if (category) resources = resources.filter(r => r.category       === category);
+
+        // Text search across title and subject
         if (q) {
             const lower = q.toLowerCase();
             resources = resources.filter(r =>
-                r.title.toLowerCase().includes(lower) ||
-                r.subject.toLowerCase().includes(lower)
+                (r.title   && r.title.toLowerCase().includes(lower)) ||
+                (r.subject && r.subject.toLowerCase().includes(lower))
             );
         }
+
+        // Sort by newest first
+        resources.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         res.status(200).json(resources);
     } catch (error) {
