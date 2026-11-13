@@ -798,6 +798,43 @@ function getSemesterOptions(year) {
             <option value="${start + 1}">Semester ${start + 1}</option>`;
 }
 
+// ── Filter Year → auto-populate Semester dropdown ──────────────────────────
+function getFilterSemesterOptions(year) {
+    const y = parseInt(year);
+    if (!y) {
+        return `<option value="">Any Sem</option>
+                <option value="1">Sem 1</option><option value="2">Sem 2</option>
+                <option value="3">Sem 3</option><option value="4">Sem 4</option>
+                <option value="5">Sem 5</option><option value="6">Sem 6</option>
+                <option value="7">Sem 7</option><option value="8">Sem 8</option>`;
+    }
+    const s1 = (y - 1) * 2 + 1;
+    const s2 = s1 + 1;
+    return `<option value="">Any Sem</option>
+            <option value="${s1}" selected>Sem ${s1}</option>
+            <option value="${s2}">Sem ${s2}</option>`;
+}
+
+function onFilterYearChange(yearVal) {
+    const semEl = document.getElementById('filterSemester');
+    if (!semEl) return;
+    semEl.innerHTML = getFilterSemesterOptions(yearVal);
+    // Auto-search when year changes
+    if (yearVal) handleSearch();
+}
+
+// ── Mobile filter collapse toggle ──────────────────────────────────────────
+function toggleFilterBody() {
+    const body = document.getElementById('filter-body');
+    const btn  = document.getElementById('filter-toggle-btn');
+    if (!body) return;
+    const isNowCollapsed = body.classList.toggle('filter-body--collapsed');
+    // aria-expanded = true when visible (not collapsed)
+    if (btn) btn.setAttribute('aria-expanded', String(!isNowCollapsed));
+    // Rotate chevron icon
+    if (btn) btn.style.transform = isNowCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
 function updateUploadSemesters() {
     const year = parseInt(document.getElementById('academicYear').value);
     if (!year) return;
@@ -823,10 +860,14 @@ function checkUserPreferences() {
         openWelcomeModal();
         fetchResources();
     } else {
+        // Populate semester dropdown for the saved year before setting its value
+        const semEl = document.getElementById('filterSemester');
+        if (semEl) semEl.innerHTML = getFilterSemesterOptions(year);
+
+        document.getElementById('filterYear').value     = year;
+        document.getElementById('filterSemester').value = sem;
         fetchResources(year, sem);
         updatePreferenceBanner(year, sem);
-        document.getElementById('filterYear').value = year;
-        document.getElementById('filterSemester').value = sem;
     }
 }
 
@@ -852,7 +893,12 @@ function saveUserPreferences() {
     localStorage.setItem('campusNotesSemester', sem);
 
     closeWelcomeModal();
-    document.getElementById('filterYear').value = year;
+
+    // Populate semester dropdown for chosen year before setting value
+    const semEl = document.getElementById('filterSemester');
+    if (semEl) semEl.innerHTML = getFilterSemesterOptions(year);
+
+    document.getElementById('filterYear').value     = year;
     document.getElementById('filterSemester').value = sem;
     fetchResources(year, sem);
     updatePreferenceBanner(year, sem);

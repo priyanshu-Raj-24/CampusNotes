@@ -10,6 +10,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CampusNotes">
     <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23285744'/%3E%3Cg transform='translate(4,4)'%3E%3Crect x='4' y='1' width='14' height='22' rx='2' fill='%23E8C87A' stroke='%23FDFAF4' stroke-width='0.5'/%3E%3Crect x='4' y='1' width='3' height='22' rx='1' fill='%23C1440E' opacity='0.8'/%3E%3Cline x1='9' y1='7' x2='16' y2='7' stroke='%23285744' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='9' y1='10' x2='16' y2='10' stroke='%23285744' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='9' y1='13' x2='14' y2='13' stroke='%23285744' stroke-width='1.2' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23285744'/%3E%3Cg transform='translate(4,4)'%3E%3Crect x='4' y='1' width='14' height='22' rx='2' fill='%23E8C87A' stroke='%23FDFAF4' stroke-width='0.5'/%3E%3Crect x='4' y='1' width='3' height='22' rx='1' fill='%23C1440E' opacity='0.8'/%3E%3Cline x1='9' y1='7' x2='16' y2='7' stroke='%23285744' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='9' y1='10' x2='16' y2='10' stroke='%23285744' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='9' y1='13' x2='14' y2='13' stroke='%23285744' stroke-width='1.2' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E">
     <title>CampusNotes – The Shared Academic Library</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
@@ -138,7 +140,6 @@
             <!-- Right-side Actions -->
             <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
 
-                <!-- User Profile — shown after login (desktop) -->
                 <div id="user-profile" class="hidden items-center gap-2">
                     <!-- Avatar circle with initial -->
                     <div class="flex items-center gap-2">
@@ -175,7 +176,6 @@
                     </svg>
                 </button>
 
-                <!-- Hamburger (mobile only) -->
                 <button id="hamburger-btn"
                     class="md:hidden p-2 rounded-md transition-colors flex-shrink-0"
                     aria-label="Open menu" aria-expanded="false" onclick="toggleMobileMenu()">
@@ -185,22 +185,7 @@
                 </button>
             </div>
         </div>
-                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/>
-                    </svg>
-                </button>
 
-                <!-- Hamburger (mobile only) -->
-                <button id="hamburger-btn"
-                    class="md:hidden p-2 rounded-md hover:bg-[#F8F8F5] transition-colors flex-shrink-0"
-                    aria-label="Open menu" aria-expanded="false" onclick="toggleMobileMenu()">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Mobile Nav Drawer -->
         <div id="mobile-menu" class="md:hidden border-t border-[#E5E7E2] bg-white px-4" aria-label="Mobile navigation">
             <div class="py-3 flex flex-col gap-1">
                 <a href="#" class="px-3 py-2.5 rounded-md text-[#747A76] hover:text-[#285744] hover:bg-[#EAF0EB] font-medium transition-colors"
@@ -217,7 +202,6 @@
                     Upload Notes
                 </button>
 
-                <!-- Logged-in user info row (mobile) -->
                 <div id="mobile-user-info" class="hidden mt-1 pt-2 border-t border-[#E5E7E2]">
                     <div class="flex items-center gap-3 px-3 py-2">
                         <img id="mobile-user-avatar" src="" alt=""
@@ -239,10 +223,8 @@
         <!-- HOME SECTION -->
         <section id="home-section" class="block">
 
-            <!-- Two-column layout: hero left, filter+resources right -->
             <div class="home-two-col">
 
-                <!-- ══ LEFT COLUMN: hero + stats + feature cards ══ -->
                 <div class="home-left">
 
                     <h1 class="hero-heading mb-3">
@@ -276,7 +258,6 @@
                         </div>
                     </div>
 
-                    <!-- Feature cards with inline SVG illustrations -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-3">
                         <!-- Organised learning -->
                         <div class="feature-card">
@@ -295,7 +276,6 @@
                             <h3>Organised learning</h3>
                             <p>Quickly find notes, reference PDFs, and year-wise materials.</p>
                         </div>
-                        <!-- Exam readiness -->
                         <div class="feature-card">
                             <div class="feature-card__illo">
                                 <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -341,49 +321,54 @@
                             <p>Students can upload and share useful academic content.</p>
                         </div>
                     </div>
-                </div><!-- /home-left -->
-
-                <!-- ══ RIGHT COLUMN: filter + results + resource cards ══ -->
+                </div>
                 <div class="home-right">
 
                     <!-- Filter card -->
                     <div class="filter-card mb-4">
-                        <h2 class="filter-heading mb-3">Find Your Materials" Filter</h2>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 items-end">
-                            <div>
-                                <label class="block text-xs font-semibold filter-label mb-1">Year</label>
-                                <select id="filterYear" class="filter-select w-full" aria-label="Filter by year">
-                                    <option value="">Year 1</option>
-                                    <option value="1">Year 1</option>
-                                    <option value="2" selected>Year 2</option>
-                                    <option value="3">Year 3</option>
-                                    <option value="4">Year 4</option>
-                                </select>
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="filter-heading">Find Your Materials" Filter</h2>
+                            <!-- Mobile toggle for filter body -->
+                            <button class="filter-toggle-btn md:hidden" id="filter-toggle-btn" onclick="toggleFilterBody()" aria-expanded="true" aria-label="Toggle filter">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="filter-body" class="filter-body">
+                            <!-- Row 1: Year + Semester + Category -->
+                            <div class="grid grid-cols-3 gap-2 mb-2">
+                                <div>
+                                    <label class="block text-xs font-semibold filter-label mb-1">Year</label>
+                                    <select id="filterYear" class="filter-select w-full" aria-label="Filter by year"
+                                            onchange="onFilterYearChange(this.value)">
+                                        <option value="">Any Year</option>
+                                        <option value="1">Year 1</option>
+                                        <option value="2" selected>Year 2</option>
+                                        <option value="3">Year 3</option>
+                                        <option value="4">Year 4</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold filter-label mb-1">Semester</label>
+                                    <select id="filterSemester" class="filter-select w-full" aria-label="Filter by semester">
+                                        <option value="">Any Sem</option>
+                                        <option value="3" selected>Sem 3</option>
+                                        <option value="4">Sem 4</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold filter-label mb-1">Category</label>
+                                    <select id="filterCategory" class="filter-select w-full" aria-label="Filter by category">
+                                        <option value="">Any Cat...</option>
+                                        <option value="Lecture Notes">Lecture Notes</option>
+                                        <option value="Previous Year Question Papers">Question Papers</option>
+                                        <option value="Lab Manuals">Lab Manuals</option>
+                                        <option value="Reference Materials">Reference</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-xs font-semibold filter-label mb-1">Semester</label>
-                                <select id="filterSemester" class="filter-select w-full" aria-label="Filter by semester">
-                                    <option value="">Any Semester</option>
-                                    <option value="1">Sem 1</option>
-                                    <option value="2">Sem 2</option>
-                                    <option value="3" selected>Sem 3</option>
-                                    <option value="4">Sem 4</option>
-                                    <option value="5">Sem 5</option>
-                                    <option value="6">Sem 6</option>
-                                    <option value="7">Sem 7</option>
-                                    <option value="8">Sem 8</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold filter-label mb-1">Category</label>
-                                <select id="filterCategory" class="filter-select w-full" aria-label="Filter by category">
-                                    <option value="">Any Cat...</option>
-                                    <option value="Lecture Notes">Lecture Notes</option>
-                                    <option value="Previous Year Question Papers">Question Papers</option>
-                                    <option value="Lab Manuals">Lab Manuals</option>
-                                    <option value="Reference Materials">Reference Materials</option>
-                                </select>
-                            </div>
+                            <!-- Row 2: Search + Button -->
                             <div class="flex gap-2">
                                 <div class="relative flex-1">
                                     <span class="absolute inset-y-0 left-2.5 flex items-center pointer-events-none search-icon-color">
@@ -391,9 +376,10 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
                                         </svg>
                                     </span>
-                                    <input type="text" id="searchInput" placeholder="Search"
+                                    <input type="text" id="searchInput" placeholder="Search by title or subject…"
                                         class="filter-select w-full pl-8 pr-2"
-                                        aria-label="Search resources">
+                                        aria-label="Search resources"
+                                        onkeydown="if(event.key==='Enter') handleSearch()">
                                 </div>
                                 <button onclick="handleSearch()" class="search-btn whitespace-nowrap">
                                     Search
