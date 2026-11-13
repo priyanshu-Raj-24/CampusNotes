@@ -266,10 +266,10 @@ const FILE_TYPE_ICONS = {
 };
 
 const CATEGORY_COLORS = {
-    'Lecture Notes':                 'bg-blue-50 text-blue-700',
-    'Previous Year Question Papers': 'bg-amber-50 text-amber-700',
-    'Lab Manuals':                   'bg-purple-50 text-purple-700',
-    'Reference Materials':           'bg-[#EAF0EB] text-[#285744]',
+    'Lecture Notes':                 'cat-badge-lecture',
+    'Previous Year Question Papers': 'cat-badge-question',
+    'Lab Manuals':                   'cat-badge-lab',
+    'Reference Materials':           'cat-badge-reference',
 };
 
 function formatFileSize(bytes) {
@@ -292,7 +292,6 @@ function formatDate(isoString) {
 
 function buildResourceCard(res) {
     const ext      = (res.fileExtension || (res.originalFilename ? res.originalFilename.split('.').pop() : 'file')).toLowerCase();
-    const icon     = FILE_TYPE_ICONS[ext] || '📎';
     const catColor = CATEGORY_COLORS[res.category] || 'bg-gray-100 text-gray-700';
     const size     = formatFileSize(res.fileSizeBytes);
     const date     = formatDate(res.createdAt);
@@ -311,18 +310,24 @@ function buildResourceCard(res) {
                 <span class="text-xs text-[#747A76] whitespace-nowrap">Y${res.academicYear} · S${res.semesterNumber}</span>
             </div>
         </div>
-        <div class="flex items-start gap-3 mb-2">
-            <span class="text-2xl flex-shrink-0 mt-0.5" aria-hidden="true">${icon}</span>
-            <div class="min-w-0">
-                <h3 class="font-bold text-base text-[#202522] leading-snug line-clamp-2">${res.title}</h3>
-                <p class="text-sm text-[#747A76] mt-0.5 truncate">${res.subject}</p>
-            </div>
+        <div class="mb-3">
+            <h3 class="font-bold text-base text-[#202522] leading-snug line-clamp-2 mb-0.5">${res.title}</h3>
+            <p class="text-sm text-[#747A76] truncate">${res.subject}</p>
         </div>
-        <div class="mt-auto pt-3 border-t border-[#E5E7E2] flex justify-between items-center gap-2">
-            <div class="text-xs text-[#747A76] truncate">
+        <div class="mt-auto pt-3 border-t border-[#E5E7E2]">
+            <div class="text-xs text-[#747A76] mb-2">
                 <span class="uppercase font-medium">${ext}</span>${size ? ` · ${size}` : ''}${date ? ` · ${date}` : ''}
             </div>
-            <div class="flex items-center gap-3 flex-shrink-0">
+            <div class="flex items-center justify-between gap-2">
+                <a href="${API_BASE}/download/${res.id}"
+                    class="download-btn"
+                    aria-label="Download ${res.title}"
+                    download="${res.originalFilename || res.title}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                    </svg>
+                    Download
+                </a>
                 <button class="share-btn" onclick="shareResource('${res.id}','${res.title.replace(/'/g, "\\'")}')"
                     aria-label="Share ${res.title}" title="Share">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -330,15 +335,6 @@ function buildResourceCard(res) {
                             d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                     </svg>
                 </button>
-                <a href="${API_BASE}/download/${res.id}"
-                    class="text-[#285744] hover:underline font-semibold text-sm flex items-center gap-1"
-                    aria-label="Download ${res.title}"
-                    download="${res.originalFilename || res.title}">
-                    Download
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"/>
-                    </svg>
-                </a>
             </div>
         </div>
     </article>`;
@@ -871,9 +867,15 @@ function closeModalAndShowAll() {
 }
 
 function updatePreferenceBanner(year, sem) {
-    document.getElementById('preference-text').textContent =
-        `📚 Showing resources for Year ${year}, Semester ${sem}`;
-    document.getElementById('active-preference-banner').classList.remove('hidden');
+    const prefText = document.getElementById('preference-text');
+    if (prefText) {
+        prefText.innerHTML = `Showing resources for <strong>Year ${year}, Semester ${sem}</strong>`;
+    }
+    const banner = document.getElementById('active-preference-banner');
+    if (banner) banner.classList.remove('hidden');
+    // Update section title
+    const titleEl = document.getElementById('resource-section-title');
+    if (titleEl) titleEl.textContent = `Resources for Year ${year}, Semester ${sem}`;
 }
 
 
